@@ -74,6 +74,7 @@ fn initialize(s: &mut State, target_slot: u64, outcome: u8) -> bool {
     s.initialized = 1;
     s.target_slot = target_slot;
     s.outcome_at_or_after = outcome;
+    s.last_returned = 0;
     true
 }
 

@@ -1,11 +1,10 @@
-import Mathlib.Algebra.BigOperators.Fin
 import QEDGen.Solana.Account
-import QEDGenMathlib.IndexedState
 
 namespace SlotHeightResolver
 
-open QEDGen.Solana
-open QEDGen.Solana.IndexedState
+open QEDGen.Solana.Account
+
+abbrev Pubkey := QEDGen.Solana.Account.Pubkey
 
 abbrev OUTCOME_UNRESOLVED : Nat := 0
 abbrev OUTCOME_YES : Nat := 1
@@ -28,11 +27,9 @@ instance : Inhabited State := ⟨{
   last_returned := 0,
 }⟩
 
-structure State where
-
 def initializeTransition (s : State) (signer : Pubkey) (target_slot : Nat) (outcome : Nat) : Option State :=
   if (s.initialized = 0) ∧ (outcome ≥ 1) ∧ (outcome ≤ 3) then
-    some { s with initialized := 1, target_slot := target_slot, outcome_at_or_after := outcome }
+    some { s with initialized := 1, target_slot := target_slot, outcome_at_or_after := outcome, last_returned := 0 }
   else none
 
 def resolve_case_0Transition (s : State) (signer : Pubkey) (clock_slot : Nat) : Option State :=
@@ -51,7 +48,7 @@ inductive Operation where
   | resolve_otherwise (clock_slot : Nat)
 
 def applyOp (s : State) (signer : Pubkey) : Operation → Option State
-  | .«initialize» target_slot outcome => «initialize»Transition s signer target_slot outcome
+  | .«initialize» target_slot outcome => initializeTransition s signer target_slot outcome
   | .resolve_case_0 clock_slot => resolve_case_0Transition s signer clock_slot
   | .resolve_otherwise clock_slot => resolve_otherwiseTransition s signer clock_slot
 

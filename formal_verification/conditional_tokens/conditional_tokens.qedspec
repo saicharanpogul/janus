@@ -136,10 +136,20 @@ property yes_no_paired_while_active :
   state.status != 0 \/ state.yes_supply == state.no_supply
   preserved_by all
 
-/// **Vault solvency**: the vault holds at least as much collateral as
-/// the outstanding winning-side supply (or YES supply while active).
-property vault_covers_supply :
-  state.vault >= state.yes_supply or state.vault >= state.no_supply
+/// **Vault tracks YES**: at every reachable state, either NO has won
+/// (in which case the vault tracks `no_supply` and the YES side is
+/// worthless), or `vault == yes_supply`. The pre-resolution case
+/// follows from `yes_no_paired_while_active`; the post-yes-resolution
+/// case follows because `redeem_yes` decreases vault and yes_supply
+/// by the same amount.
+property vault_tracks_yes :
+  state.status == 2 \/ state.vault == state.yes_supply
+  preserved_by all
+
+/// **Vault tracks NO** (symmetric): either YES has won and the vault
+/// tracks `yes_supply`, or `vault == no_supply`.
+property vault_tracks_no :
+  state.status == 1 \/ state.vault == state.no_supply
   preserved_by all
 
 /// **Resolution monotonicity**: status only transitions Active → Resolved*,

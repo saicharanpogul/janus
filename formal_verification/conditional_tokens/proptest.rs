@@ -66,9 +66,14 @@ fn yes_no_paired_while_active(s: &State) -> bool {
     (s.status != 0) || (s.yes_supply == s.no_supply)
 }
 
-/// vault_covers_supply: s.vault ≥ s.yes_supply ∨ s.vault ≥ s.no_supply
-fn vault_covers_supply(s: &State) -> bool {
-    (s.vault >= s.yes_supply) || (s.vault >= s.no_supply)
+/// vault_tracks_yes: s.status = 2 ∨ s.vault = s.yes_supply
+fn vault_tracks_yes(s: &State) -> bool {
+    (s.status == 2) || (s.vault == s.yes_supply)
+}
+
+/// vault_tracks_no: s.status = 1 ∨ s.vault = s.no_supply
+fn vault_tracks_no(s: &State) -> bool {
+    (s.status == 1) || (s.vault == s.no_supply)
 }
 
 /// status_monotone: s.status ≤ 3
@@ -153,7 +158,8 @@ proptest! {
     fn initialize_market_preserves_yes_no_paired_while_active(s in arb_state(), initial_collateral in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if initialize_market(&mut s, initial_collateral) {
             prop_assert!(yes_no_paired_while_active(&s),
@@ -168,7 +174,8 @@ proptest! {
     fn split_preserves_yes_no_paired_while_active(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if split(&mut s, amount) {
             prop_assert!(yes_no_paired_while_active(&s),
@@ -183,7 +190,8 @@ proptest! {
     fn merge_preserves_yes_no_paired_while_active(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if merge(&mut s, amount) {
             prop_assert!(yes_no_paired_while_active(&s),
@@ -198,7 +206,8 @@ proptest! {
     fn resolve_yes_preserves_yes_no_paired_while_active(s in arb_state()) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if resolve_yes(&mut s) {
             prop_assert!(yes_no_paired_while_active(&s),
@@ -213,7 +222,8 @@ proptest! {
     fn resolve_no_preserves_yes_no_paired_while_active(s in arb_state()) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if resolve_no(&mut s) {
             prop_assert!(yes_no_paired_while_active(&s),
@@ -228,7 +238,8 @@ proptest! {
     fn redeem_yes_preserves_yes_no_paired_while_active(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if redeem_yes(&mut s, amount) {
             prop_assert!(yes_no_paired_while_active(&s),
@@ -243,7 +254,8 @@ proptest! {
     fn redeem_no_preserves_yes_no_paired_while_active(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if redeem_no(&mut s, amount) {
             prop_assert!(yes_no_paired_while_active(&s),
@@ -255,14 +267,15 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
     #[test]
-    fn initialize_market_preserves_vault_covers_supply(s in arb_state(), initial_collateral in 0u64..=u64::MAX) {
+    fn initialize_market_preserves_vault_tracks_yes(s in arb_state(), initial_collateral in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if initialize_market(&mut s, initial_collateral) {
-            prop_assert!(vault_covers_supply(&s),
-                "vault_covers_supply must hold after initialize_market");
+            prop_assert!(vault_tracks_yes(&s),
+                "vault_tracks_yes must hold after initialize_market");
         }
     }
 }
@@ -270,14 +283,15 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
     #[test]
-    fn split_preserves_vault_covers_supply(s in arb_state(), amount in 0u64..=u64::MAX) {
+    fn split_preserves_vault_tracks_yes(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if split(&mut s, amount) {
-            prop_assert!(vault_covers_supply(&s),
-                "vault_covers_supply must hold after split");
+            prop_assert!(vault_tracks_yes(&s),
+                "vault_tracks_yes must hold after split");
         }
     }
 }
@@ -285,14 +299,15 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
     #[test]
-    fn merge_preserves_vault_covers_supply(s in arb_state(), amount in 0u64..=u64::MAX) {
+    fn merge_preserves_vault_tracks_yes(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if merge(&mut s, amount) {
-            prop_assert!(vault_covers_supply(&s),
-                "vault_covers_supply must hold after merge");
+            prop_assert!(vault_tracks_yes(&s),
+                "vault_tracks_yes must hold after merge");
         }
     }
 }
@@ -300,14 +315,15 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
     #[test]
-    fn resolve_yes_preserves_vault_covers_supply(s in arb_state()) {
+    fn resolve_yes_preserves_vault_tracks_yes(s in arb_state()) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if resolve_yes(&mut s) {
-            prop_assert!(vault_covers_supply(&s),
-                "vault_covers_supply must hold after resolve_yes");
+            prop_assert!(vault_tracks_yes(&s),
+                "vault_tracks_yes must hold after resolve_yes");
         }
     }
 }
@@ -315,14 +331,15 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
     #[test]
-    fn resolve_no_preserves_vault_covers_supply(s in arb_state()) {
+    fn resolve_no_preserves_vault_tracks_yes(s in arb_state()) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if resolve_no(&mut s) {
-            prop_assert!(vault_covers_supply(&s),
-                "vault_covers_supply must hold after resolve_no");
+            prop_assert!(vault_tracks_yes(&s),
+                "vault_tracks_yes must hold after resolve_no");
         }
     }
 }
@@ -330,14 +347,15 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
     #[test]
-    fn redeem_yes_preserves_vault_covers_supply(s in arb_state(), amount in 0u64..=u64::MAX) {
+    fn redeem_yes_preserves_vault_tracks_yes(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if redeem_yes(&mut s, amount) {
-            prop_assert!(vault_covers_supply(&s),
-                "vault_covers_supply must hold after redeem_yes");
+            prop_assert!(vault_tracks_yes(&s),
+                "vault_tracks_yes must hold after redeem_yes");
         }
     }
 }
@@ -345,14 +363,127 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
     #[test]
-    fn redeem_no_preserves_vault_covers_supply(s in arb_state(), amount in 0u64..=u64::MAX) {
+    fn redeem_no_preserves_vault_tracks_yes(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if redeem_no(&mut s, amount) {
-            prop_assert!(vault_covers_supply(&s),
-                "vault_covers_supply must hold after redeem_no");
+            prop_assert!(vault_tracks_yes(&s),
+                "vault_tracks_yes must hold after redeem_no");
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
+    #[test]
+    fn initialize_market_preserves_vault_tracks_no(s in arb_state(), initial_collateral in 0u64..=u64::MAX) {
+        let mut s = s;
+        prop_assume!(yes_no_paired_while_active(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
+        prop_assume!(status_monotone(&s));
+        if initialize_market(&mut s, initial_collateral) {
+            prop_assert!(vault_tracks_no(&s),
+                "vault_tracks_no must hold after initialize_market");
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
+    #[test]
+    fn split_preserves_vault_tracks_no(s in arb_state(), amount in 0u64..=u64::MAX) {
+        let mut s = s;
+        prop_assume!(yes_no_paired_while_active(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
+        prop_assume!(status_monotone(&s));
+        if split(&mut s, amount) {
+            prop_assert!(vault_tracks_no(&s),
+                "vault_tracks_no must hold after split");
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
+    #[test]
+    fn merge_preserves_vault_tracks_no(s in arb_state(), amount in 0u64..=u64::MAX) {
+        let mut s = s;
+        prop_assume!(yes_no_paired_while_active(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
+        prop_assume!(status_monotone(&s));
+        if merge(&mut s, amount) {
+            prop_assert!(vault_tracks_no(&s),
+                "vault_tracks_no must hold after merge");
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
+    #[test]
+    fn resolve_yes_preserves_vault_tracks_no(s in arb_state()) {
+        let mut s = s;
+        prop_assume!(yes_no_paired_while_active(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
+        prop_assume!(status_monotone(&s));
+        if resolve_yes(&mut s) {
+            prop_assert!(vault_tracks_no(&s),
+                "vault_tracks_no must hold after resolve_yes");
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
+    #[test]
+    fn resolve_no_preserves_vault_tracks_no(s in arb_state()) {
+        let mut s = s;
+        prop_assume!(yes_no_paired_while_active(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
+        prop_assume!(status_monotone(&s));
+        if resolve_no(&mut s) {
+            prop_assert!(vault_tracks_no(&s),
+                "vault_tracks_no must hold after resolve_no");
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
+    #[test]
+    fn redeem_yes_preserves_vault_tracks_no(s in arb_state(), amount in 0u64..=u64::MAX) {
+        let mut s = s;
+        prop_assume!(yes_no_paired_while_active(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
+        prop_assume!(status_monotone(&s));
+        if redeem_yes(&mut s, amount) {
+            prop_assert!(vault_tracks_no(&s),
+                "vault_tracks_no must hold after redeem_yes");
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { max_global_rejects: 65536, ..ProptestConfig::with_cases(256) })]
+    #[test]
+    fn redeem_no_preserves_vault_tracks_no(s in arb_state(), amount in 0u64..=u64::MAX) {
+        let mut s = s;
+        prop_assume!(yes_no_paired_while_active(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
+        prop_assume!(status_monotone(&s));
+        if redeem_no(&mut s, amount) {
+            prop_assert!(vault_tracks_no(&s),
+                "vault_tracks_no must hold after redeem_no");
         }
     }
 }
@@ -363,7 +494,8 @@ proptest! {
     fn initialize_market_preserves_status_monotone(s in arb_state(), initial_collateral in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if initialize_market(&mut s, initial_collateral) {
             prop_assert!(status_monotone(&s),
@@ -378,7 +510,8 @@ proptest! {
     fn split_preserves_status_monotone(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if split(&mut s, amount) {
             prop_assert!(status_monotone(&s),
@@ -393,7 +526,8 @@ proptest! {
     fn merge_preserves_status_monotone(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if merge(&mut s, amount) {
             prop_assert!(status_monotone(&s),
@@ -408,7 +542,8 @@ proptest! {
     fn resolve_yes_preserves_status_monotone(s in arb_state()) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if resolve_yes(&mut s) {
             prop_assert!(status_monotone(&s),
@@ -423,7 +558,8 @@ proptest! {
     fn resolve_no_preserves_status_monotone(s in arb_state()) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if resolve_no(&mut s) {
             prop_assert!(status_monotone(&s),
@@ -438,7 +574,8 @@ proptest! {
     fn redeem_yes_preserves_status_monotone(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if redeem_yes(&mut s, amount) {
             prop_assert!(status_monotone(&s),
@@ -453,7 +590,8 @@ proptest! {
     fn redeem_no_preserves_status_monotone(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         if redeem_no(&mut s, amount) {
             prop_assert!(status_monotone(&s),
@@ -545,7 +683,8 @@ proptest! {
     fn split_no_overflow_on_vault(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         let pre = s.vault;
         if split(&mut s, amount) {
@@ -562,7 +701,8 @@ proptest! {
     fn split_no_overflow_on_yes_supply(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         let pre = s.yes_supply;
         if split(&mut s, amount) {
@@ -579,7 +719,8 @@ proptest! {
     fn split_no_overflow_on_no_supply(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         let pre = s.no_supply;
         if split(&mut s, amount) {
@@ -596,7 +737,8 @@ proptest! {
     fn merge_no_overflow_on_collateral_balance(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         let pre = s.collateral_balance;
         if merge(&mut s, amount) {
@@ -613,7 +755,8 @@ proptest! {
     fn redeem_yes_no_overflow_on_collateral_balance(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         let pre = s.collateral_balance;
         if redeem_yes(&mut s, amount) {
@@ -630,7 +773,8 @@ proptest! {
     fn redeem_no_no_overflow_on_collateral_balance(s in arb_state(), amount in 0u64..=u64::MAX) {
         let mut s = s;
         prop_assume!(yes_no_paired_while_active(&s));
-        prop_assume!(vault_covers_supply(&s));
+        prop_assume!(vault_tracks_yes(&s));
+        prop_assume!(vault_tracks_no(&s));
         prop_assume!(status_monotone(&s));
         let pre = s.collateral_balance;
         if redeem_no(&mut s, amount) {
@@ -678,7 +822,8 @@ fn apply_op(s: &mut State, op: &Op) -> bool {
 
 fn assert_all_properties(s: &State, context: &str) {
     assert!(yes_no_paired_while_active(s), "{} violated: yes_no_paired_while_active", context);
-    assert!(vault_covers_supply(s), "{} violated: vault_covers_supply", context);
+    assert!(vault_tracks_yes(s), "{} violated: vault_tracks_yes", context);
+    assert!(vault_tracks_no(s), "{} violated: vault_tracks_no", context);
     assert!(status_monotone(s), "{} violated: status_monotone", context);
 }
 
@@ -693,8 +838,10 @@ proptest! {
                 // Check all properties after each successful transition
                 prop_assert!(yes_no_paired_while_active(&s),
                     "yes_no_paired_while_active violated after op {:?} (step {})", op, i);
-                prop_assert!(vault_covers_supply(&s),
-                    "vault_covers_supply violated after op {:?} (step {})", op, i);
+                prop_assert!(vault_tracks_yes(&s),
+                    "vault_tracks_yes violated after op {:?} (step {})", op, i);
+                prop_assert!(vault_tracks_no(&s),
+                    "vault_tracks_no violated after op {:?} (step {})", op, i);
                 prop_assert!(status_monotone(&s),
                     "status_monotone violated after op {:?} (step {})", op, i);
             }

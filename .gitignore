@@ -21,3 +21,4 @@ formal_verification/*/lakefile.lean
 formal_verification/*/lean-toolchain
 formal_verification/*/.lake/
 formal_verification/*/build/
+lake-manifest.json

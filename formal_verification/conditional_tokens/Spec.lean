@@ -91,9 +91,13 @@ def applyOp (s : State) (signer : Pubkey) : Operation → Option State
 def yes_no_paired_while_active (s : State) : Prop :=
   s.status ≠ 0 ∨ s.yes_supply = s.no_supply
 
-/-- Property: vault_covers_supply. -/
-def vault_covers_supply (s : State) : Prop :=
-  s.vault ≥ s.yes_supply ∨ s.vault ≥ s.no_supply
+/-- Property: vault_tracks_yes. -/
+def vault_tracks_yes (s : State) : Prop :=
+  s.status = 2 ∨ s.vault = s.yes_supply
+
+/-- Property: vault_tracks_no. -/
+def vault_tracks_no (s : State) : Prop :=
+  s.status = 1 ∨ s.vault = s.no_supply
 
 /-- Property: status_monotone. -/
 def status_monotone (s : State) : Prop :=

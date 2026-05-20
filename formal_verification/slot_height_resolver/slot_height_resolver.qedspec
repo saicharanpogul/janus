@@ -36,6 +36,7 @@ handler initialize
     initialized         := 1
     target_slot         := target_slot
     outcome_at_or_after := outcome
+    last_returned       := 0
   }
 }
 
