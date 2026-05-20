@@ -8,3 +8,9 @@ node_modules/
 .env.local
 *.so
 test-ledger/
+# SDK build artifacts
+sdk/dist/
+sdk/*.tsbuildinfo
+# Local Solana keypairs / wallets — never commit
+*-keypair.json
+*.kp
