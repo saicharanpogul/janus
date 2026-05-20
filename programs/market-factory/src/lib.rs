@@ -20,6 +20,7 @@ use pinocchio::{
     account_info::AccountInfo,
     entrypoint,
     instruction::{Seed, Signer},
+    nostd_panic_handler,
     program_error::ProgramError,
     pubkey::{create_program_address, Pubkey},
     sysvars::{clock::Clock, Sysvar},
@@ -28,6 +29,7 @@ use pinocchio::{
 use pinocchio_system::instructions::CreateAccount;
 
 entrypoint!(process_instruction);
+nostd_panic_handler!();
 
 // Placeholder program ID — replace before deployment.
 pinocchio_pubkey::declare_id!("61MLdp3PjxAhoiPRbx2kJqoq4cri8vB5FovmHYq7AKuh");

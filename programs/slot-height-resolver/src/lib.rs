@@ -14,6 +14,7 @@ use pinocchio::{
     account_info::AccountInfo,
     entrypoint,
     instruction::{Seed, Signer},
+    nostd_panic_handler,
     program::set_return_data,
     program_error::ProgramError,
     pubkey::{create_program_address, Pubkey},
@@ -23,6 +24,7 @@ use pinocchio::{
 use pinocchio_system::instructions::CreateAccount;
 
 entrypoint!(process_instruction);
+nostd_panic_handler!();
 
 // Placeholder program ID — replace before deployment by running
 // `solana-keygen new` and pasting the resulting pubkey here.

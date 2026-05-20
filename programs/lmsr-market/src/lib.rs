@@ -26,13 +26,14 @@ mod processor;
 mod state;
 
 use pinocchio::{
-    account_info::AccountInfo, entrypoint, program_error::ProgramError, pubkey::Pubkey,
-    ProgramResult,
+    account_info::AccountInfo, entrypoint, nostd_panic_handler, program_error::ProgramError,
+    pubkey::Pubkey, ProgramResult,
 };
 
 use crate::instruction::InstructionTag;
 
 entrypoint!(process_instruction);
+nostd_panic_handler!();
 
 // Placeholder program ID — replace before deployment with a real keypair.
 pinocchio_pubkey::declare_id!("61MLdp3QZMZ8knfBtZvi7CGhB2SgX1Usq6wVaL89SHD1");

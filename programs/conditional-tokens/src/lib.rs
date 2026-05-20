@@ -10,8 +10,8 @@
 #![no_std]
 
 use pinocchio::{
-    account_info::AccountInfo, entrypoint, program_error::ProgramError, pubkey::Pubkey,
-    ProgramResult,
+    account_info::AccountInfo, entrypoint, nostd_panic_handler, program_error::ProgramError,
+    pubkey::Pubkey, ProgramResult,
 };
 
 pub mod error;
@@ -22,6 +22,7 @@ pub mod state;
 use crate::instruction::InstructionTag;
 
 entrypoint!(process_instruction);
+nostd_panic_handler!();
 
 // Placeholder program ID — replace before deployment by running
 // `solana-keygen new -o target/deploy/janus_conditional_tokens-keypair.json`
