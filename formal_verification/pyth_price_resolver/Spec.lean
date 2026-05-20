@@ -1,16 +1,12 @@
-import Mathlib.Algebra.BigOperators.Fin
 import QEDGen.Solana.Account
-import QEDGenMathlib.IndexedState
 
 namespace PythPriceResolver
 
-open QEDGen.Solana
-open QEDGen.Solana.IndexedState
+open QEDGen.Solana.Account
+abbrev Pubkey := QEDGen.Solana.Account.Pubkey
 
 abbrev COMPARISON_GTE : Nat := 0
 abbrev COMPARISON_LT : Nat := 1
-
-abbrev AccountIdx : Type := Fin 1024
 
 structure State where
   initialized : Nat
@@ -29,8 +25,6 @@ instance : Inhabited State := ⟨{
   comparison := 0,
   last_returned := 0,
 }⟩
-
-structure State where
 
 def initializeTransition (s : State) (signer : Pubkey) (earliest_slot : Nat) (threshold_price : Nat) (threshold_expo : Nat) (comparison : Nat) : Option State :=
   if (s.initialized = 0) ∧ (comparison ≤ 1) then
@@ -71,7 +65,7 @@ inductive Operation where
   | resolve_otherwise (clock_slot : Nat) (feed_price : Nat) (feed_expo : Nat)
 
 def applyOp (s : State) (signer : Pubkey) : Operation → Option State
-  | .«initialize» earliest_slot threshold_price threshold_expo comparison => «initialize»Transition s signer earliest_slot threshold_price threshold_expo comparison
+  | .«initialize» earliest_slot threshold_price threshold_expo comparison => initializeTransition s signer earliest_slot threshold_price threshold_expo comparison
   | .resolve_case_0 clock_slot feed_price feed_expo => resolve_case_0Transition s signer clock_slot feed_price feed_expo
   | .resolve_case_1 clock_slot feed_price feed_expo => resolve_case_1Transition s signer clock_slot feed_price feed_expo
   | .resolve_case_2 clock_slot feed_price feed_expo => resolve_case_2Transition s signer clock_slot feed_price feed_expo

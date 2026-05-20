@@ -1,13 +1,9 @@
-import Mathlib.Algebra.BigOperators.Fin
 import QEDGen.Solana.Account
-import QEDGenMathlib.IndexedState
 
 namespace MarketFactory
 
-open QEDGen.Solana
-open QEDGen.Solana.IndexedState
-
-abbrev AccountIdx : Type := Fin 1024
+open QEDGen.Solana.Account
+abbrev Pubkey := QEDGen.Solana.Account.Pubkey
 
 structure State where
   initialized : Nat
@@ -20,8 +16,6 @@ instance : Inhabited State := ⟨{
   deadline_slot := 0,
   created_at_slot := 0,
 }⟩
-
-structure State where
 
 def registerTransition (s : State) (signer : Pubkey) (deadline_slot : Nat) (current_slot : Nat) : Option State :=
   if (s.initialized = 0) then
