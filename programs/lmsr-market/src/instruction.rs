@@ -9,6 +9,11 @@ pub enum InstructionTag {
     InitializePool = 0,
     /// Swap one outcome token for the other along the constant-product curve.
     Swap = 1,
+    /// After the bound market has resolved, the pool's authority sweeps
+    /// the winning side's remaining vault balance to their own token
+    /// account so it can be redeemed for collateral via
+    /// conditional-tokens::redeem.
+    WithdrawPoolTokens = 2,
 }
 
 impl TryFrom<u8> for InstructionTag {
@@ -17,6 +22,7 @@ impl TryFrom<u8> for InstructionTag {
         match b {
             0 => Ok(Self::InitializePool),
             1 => Ok(Self::Swap),
+            2 => Ok(Self::WithdrawPoolTokens),
             _ => Err(LmsrError::InvalidInstructionData.into()),
         }
     }
@@ -75,5 +81,27 @@ impl SwapData {
     }
 }
 
+/// Instruction data for `WithdrawPoolTokens`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct WithdrawPoolTokensData {
+    /// Amount of winning-side tokens to withdraw.
+    pub amount: u64,
+    /// `0` = withdraw YES (use when market resolved YES), `1` = NO.
+    pub side: u8,
+    pub _padding: [u8; 7],
+}
+
+impl WithdrawPoolTokensData {
+    pub const LEN: usize = core::mem::size_of::<Self>();
+    pub fn from_bytes(d: &[u8]) -> Result<&Self, ProgramError> {
+        if d.len() != Self::LEN {
+            return Err(LmsrError::InvalidInstructionData.into());
+        }
+        Ok(unsafe { &*(d.as_ptr() as *const Self) })
+    }
+}
+
 const _: () = assert!(InitializePoolData::LEN == 24);
 const _: () = assert!(SwapData::LEN == 24);
+const _: () = assert!(WithdrawPoolTokensData::LEN == 16);

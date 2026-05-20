@@ -51,5 +51,8 @@ pub fn process_instruction(
     match InstructionTag::try_from(*tag)? {
         InstructionTag::InitializePool => processor::process_initialize_pool(accounts, rest),
         InstructionTag::Swap => processor::process_swap(accounts, rest),
+        InstructionTag::WithdrawPoolTokens => {
+            processor::process_withdraw_pool_tokens(accounts, rest)
+        }
     }
 }

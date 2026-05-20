@@ -88,6 +88,43 @@ export interface SwapParams {
   direction: SwapDirection;
 }
 
+// ----- WithdrawPoolTokens -----
+
+export type WithdrawSide = "yes" | "no";
+
+export interface WithdrawPoolTokensParams {
+  authority: PublicKey;
+  pool: PublicKey;
+  market: PublicKey;
+  vault: PublicKey;
+  destination: PublicKey;
+  amount: bigint;
+  side: WithdrawSide;
+}
+
+export function withdrawPoolTokensIx(
+  p: WithdrawPoolTokensParams,
+): TransactionInstruction {
+  const data = new Uint8Array(17);
+  data[0] = LMSR_MARKET_IX.WithdrawPoolTokens;
+  const view = new DataView(data.buffer, data.byteOffset + 1, 16);
+  view.setBigUint64(0, p.amount, true);
+  view.setUint8(8, p.side === "yes" ? 0 : 1);
+
+  return new TransactionInstruction({
+    programId: LMSR_MARKET_PROGRAM_ID,
+    keys: [
+      { pubkey: p.authority, isSigner: true, isWritable: false },
+      { pubkey: p.pool, isSigner: false, isWritable: true },
+      { pubkey: p.market, isSigner: false, isWritable: false },
+      { pubkey: p.vault, isSigner: false, isWritable: true },
+      { pubkey: p.destination, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.from(data),
+  });
+}
+
 export function swapIx(p: SwapParams): TransactionInstruction {
   const data = new Uint8Array(25);
   data[0] = LMSR_MARKET_IX.Swap;

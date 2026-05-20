@@ -54,6 +54,7 @@ export const CONDITIONAL_TOKENS_IX = {
 export const LMSR_MARKET_IX = {
   InitializePool: 0,
   Swap: 1,
+  WithdrawPoolTokens: 2,
 } as const;
 
 export const RESOLVER_IX = {

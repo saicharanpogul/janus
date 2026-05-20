@@ -13,9 +13,25 @@ use pinocchio_token::{
 
 use crate::{
     error::LmsrError,
-    instruction::{InitializePoolData, SwapData},
+    instruction::{InitializePoolData, SwapData, WithdrawPoolTokensData},
     state::Pool,
 };
+
+/// Program ID of the conditional-tokens crate. Used to verify the bound
+/// market account's ownership when reading its status during a
+/// WithdrawPoolTokens call. Must stay in sync with that crate's
+/// `declare_id!`.
+const CONDITIONAL_TOKENS_ID: Pubkey =
+    pinocchio_pubkey::pubkey!("61MLdp3EEExnhh6W9BYT8Jj52ZoXYoQn6PHKmxtrsc7y");
+
+/// Byte offset of `Market::status` inside the conditional-tokens market
+/// account (immediately after `bump: u8`).
+const MARKET_STATUS_OFFSET: usize = 1;
+
+/// `MarketStatus::ResolvedYes` discriminant.
+const STATUS_RESOLVED_YES: u8 = 1;
+/// `MarketStatus::ResolvedNo` discriminant.
+const STATUS_RESOLVED_NO: u8 = 2;
 
 const MAX_FEE_BPS: u16 = 1_000;
 
@@ -321,6 +337,111 @@ pub fn process_swap(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
                 p.yes_reserves = p
                     .yes_reserves
                     .checked_sub(amount_out)
+                    .ok_or(LmsrError::MathOverflow)?;
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    Ok(())
+}
+
+// -------------------------------------------------------------------------
+// WithdrawPoolTokens
+// -------------------------------------------------------------------------
+
+/// Accounts:
+///   0. `[signer]`   authority (must equal pool.authority)
+///   1. `[writable]` pool
+///   2. `[readonly]` bound market (must equal pool.market;
+///                   must be owned by conditional-tokens and resolved)
+///   3. `[writable]` source vault (YES or NO depending on `side`)
+///   4. `[writable]` authority's destination token account
+///   5. `[readonly]` SPL Token program
+///
+/// Lets the pool authority sweep the winning-side vault balance to a
+/// token account they own. Pre-resolution use is rejected; mixing up the
+/// side and vault is rejected; recovery of the losing side is rejected
+/// (those tokens are worth 0 and the conditional-tokens program will
+/// reject the redeem anyway).
+pub fn process_withdraw_pool_tokens(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
+    let ix = WithdrawPoolTokensData::from_bytes(data)?;
+    if ix.amount == 0 {
+        return Err(LmsrError::ZeroAmount.into());
+    }
+
+    let [authority, pool_ai, market_ai, vault_ai, dest_ai, _token_program_ai] = accounts else {
+        return Err(ProgramError::NotEnoughAccountKeys);
+    };
+
+    if !authority.is_signer() {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    let pool = read_pool(pool_ai)?;
+    if &pool.authority != authority.key() {
+        return Err(ProgramError::IllegalOwner);
+    }
+    if &pool.market != market_ai.key() {
+        return Err(LmsrError::InvalidMarket.into());
+    }
+
+    // Verify the market is owned by conditional-tokens and is resolved
+    // on a side that matches the side the caller is withdrawing.
+    // SAFETY: see read_pool / conditional-tokens read_market.
+    let market_owner = unsafe { market_ai.owner() };
+    if market_owner != &CONDITIONAL_TOKENS_ID {
+        return Err(ProgramError::IllegalOwner);
+    }
+    let market_data = market_ai.try_borrow_data()?;
+    if market_data.len() <= MARKET_STATUS_OFFSET {
+        return Err(LmsrError::InvalidMarket.into());
+    }
+    let market_status = market_data[MARKET_STATUS_OFFSET];
+    drop(market_data);
+
+    let (expected_vault, required_status) = match ix.side {
+        0 => (&pool.yes_vault, STATUS_RESOLVED_YES),
+        1 => (&pool.no_vault, STATUS_RESOLVED_NO),
+        _ => return Err(LmsrError::InvalidInstructionData.into()),
+    };
+    if expected_vault != vault_ai.key() {
+        return Err(LmsrError::InvalidVault.into());
+    }
+    if market_status != required_status {
+        return Err(LmsrError::InvalidMarket.into());
+    }
+
+    // ---- Signed transfer from vault to authority ----
+    let pool_bump_arr = [pool.bump];
+    let pool_signer_seeds: [Seed; 3] = [
+        Seed::from(Pool::SEED),
+        Seed::from(pool.market.as_ref()),
+        Seed::from(pool_bump_arr.as_ref()),
+    ];
+    Transfer {
+        from: vault_ai,
+        to: dest_ai,
+        authority: pool_ai,
+        amount: ix.amount,
+    }
+    .invoke_signed(&[Signer::from(&pool_signer_seeds[..])])?;
+
+    // ---- Update cached reserve on the withdrawn side ----
+    {
+        let mut d = pool_ai.try_borrow_mut_data()?;
+        let p = Pool::from_data_mut(&mut d)?;
+        match ix.side {
+            0 => {
+                p.yes_reserves = p
+                    .yes_reserves
+                    .checked_sub(ix.amount)
+                    .ok_or(LmsrError::MathOverflow)?;
+            }
+            1 => {
+                p.no_reserves = p
+                    .no_reserves
+                    .checked_sub(ix.amount)
                     .ok_or(LmsrError::MathOverflow)?;
             }
             _ => unreachable!(),
