@@ -1,0 +1,66 @@
+spec SlotHeightResolver
+
+program_id "61MLdp3RWCNin5N3CPGTdCHoSA4EyZYLqegkaDus9nFZ"
+
+const OUTCOME_UNRESOLVED = 0
+const OUTCOME_YES        = 1
+const OUTCOME_NO         = 2
+const OUTCOME_INVALID    = 3
+
+state {
+  initialized         : U8,
+  target_slot         : U64,
+  outcome_at_or_after : U8,
+  last_returned       : U8,
+}
+
+type Error
+  | InvalidOutcome
+  | AlreadyInitialized
+
+/// Initialize the resolver state with operator-chosen outcome + target slot.
+handler initialize
+    (target_slot : U64)
+    (outcome     : U8) {
+  permissionless
+  accounts {
+    payer          : signer, writable
+    state          : writable
+    authority      : signer
+    system_program : program
+  }
+  requires state.initialized == 0 else AlreadyInitialized
+  requires outcome >= 1 else InvalidOutcome
+  requires outcome <= 3 else InvalidOutcome
+  effect {
+    initialized         := 1
+    target_slot         := target_slot
+    outcome_at_or_after := outcome
+  }
+}
+
+/// Resolve handler: split into two cases by the clock_slot comparison.
+/// Each case writes a different last_returned value, capturing the
+/// program's set_return_data behavior in the formal model.
+handler resolve (clock_slot : U64) {
+  permissionless
+  accounts { state : readonly }
+  match
+    | clock_slot < state.target_slot => effect { last_returned := 0 }
+    | _ => effect { last_returned := state.outcome_at_or_after }
+}
+
+/// last_returned is always either Unresolved (0) or the operator's
+/// configured outcome — never an arbitrary byte. The resolver never
+/// leaks a value it wasn't configured for.
+property returned_value_bounded :
+  state.last_returned == 0 \/ state.last_returned == state.outcome_at_or_after
+  preserved_by all
+
+/// Once initialized, outcome_at_or_after is in the {Yes, No, Invalid}
+/// terminal set. Initialize rejects Unresolved (0) explicitly.
+property outcome_terminal_after_init :
+  state.initialized == 0 \/ (state.outcome_at_or_after >= 1 and state.outcome_at_or_after <= 3)
+  preserved_by all
+
+cover happy_path [initialize, resolve]

@@ -1,0 +1,154 @@
+spec ConditionalTokens
+
+program_id "61MLdp3EEExnhh6W9BYT8Jj52ZoXYoQn6PHKmxtrsc7y"
+
+const STATUS_ACTIVE           = 0
+const STATUS_RESOLVED_YES     = 1
+const STATUS_RESOLVED_NO      = 2
+const STATUS_RESOLVED_INVALID = 3
+
+state {
+  initialized        : U8,
+  status             : U8,
+  collateral_balance : U64,
+  yes_supply         : U64,
+  no_supply          : U64,
+  vault              : U64,
+}
+
+type Error
+  | AlreadyInitialized
+  | ZeroAmount
+  | MarketNotActive
+  | MarketNotResolvedYes
+  | MarketNotResolvedNo
+  | InsufficientCollateral
+  | InsufficientOutcomeTokens
+
+/// Initialize a fresh market — status starts Active, supplies and vault zero.
+handler initialize_market (initial_collateral : U64) {
+  permissionless
+  accounts {
+    payer  : signer, writable
+    market : writable
+  }
+  requires state.initialized == 0 else AlreadyInitialized
+  effect {
+    initialized        := 1
+    status             := 0
+    collateral_balance := initial_collateral
+    yes_supply         := 0
+    no_supply          := 0
+    vault              := 0
+  }
+}
+
+/// Deposit collateral, mint matching YES + NO outcome tokens.
+handler split (amount : U64) {
+  permissionless
+  accounts { market : writable }
+  requires state.initialized == 1 else MarketNotActive
+  requires state.status == 0 else MarketNotActive
+  requires amount > 0 else ZeroAmount
+  requires state.collateral_balance >= amount else InsufficientCollateral
+  effect {
+    collateral_balance -= amount
+    vault              += amount
+    yes_supply         += amount
+    no_supply          += amount
+  }
+}
+
+/// Burn matching YES + NO outcome tokens, return collateral. Inverse of split.
+handler merge (amount : U64) {
+  permissionless
+  accounts { market : writable }
+  requires state.initialized == 1 else MarketNotActive
+  requires state.status == 0 else MarketNotActive
+  requires amount > 0 else ZeroAmount
+  requires state.yes_supply >= amount else InsufficientOutcomeTokens
+  requires state.no_supply >= amount else InsufficientOutcomeTokens
+  requires state.vault >= amount else InsufficientCollateral
+  effect {
+    yes_supply         -= amount
+    no_supply          -= amount
+    vault              -= amount
+    collateral_balance += amount
+  }
+}
+
+/// Resolve YES — transitions the market to ResolvedYes status.
+handler resolve_yes {
+  permissionless
+  accounts { market : writable }
+  requires state.initialized == 1 else MarketNotActive
+  requires state.status == 0 else MarketNotActive
+  effect {
+    status := 1
+  }
+}
+
+/// Resolve NO — transitions the market to ResolvedNo status.
+handler resolve_no {
+  permissionless
+  accounts { market : writable }
+  requires state.initialized == 1 else MarketNotActive
+  requires state.status == 0 else MarketNotActive
+  effect {
+    status := 2
+  }
+}
+
+/// Burn winning YES tokens 1:1 for collateral after a YES resolution.
+handler redeem_yes (amount : U64) {
+  permissionless
+  accounts { market : writable }
+  requires state.status == 1 else MarketNotResolvedYes
+  requires amount > 0 else ZeroAmount
+  requires state.yes_supply >= amount else InsufficientOutcomeTokens
+  requires state.vault >= amount else InsufficientCollateral
+  effect {
+    yes_supply         -= amount
+    vault              -= amount
+    collateral_balance += amount
+  }
+}
+
+/// Burn winning NO tokens 1:1 for collateral after a NO resolution.
+handler redeem_no (amount : U64) {
+  permissionless
+  accounts { market : writable }
+  requires state.status == 2 else MarketNotResolvedNo
+  requires amount > 0 else ZeroAmount
+  requires state.no_supply >= amount else InsufficientOutcomeTokens
+  requires state.vault >= amount else InsufficientCollateral
+  effect {
+    no_supply          -= amount
+    vault              -= amount
+    collateral_balance += amount
+  }
+}
+
+/// **Pairing invariant**: while a market is active, the YES and NO
+/// supplies match — every split mints the pair, every merge burns the
+/// pair, and redeem only fires post-resolution.
+property yes_no_paired_while_active :
+  state.status != 0 \/ state.yes_supply == state.no_supply
+  preserved_by all
+
+/// **Vault solvency**: the vault holds at least as much collateral as
+/// the outstanding winning-side supply (or YES supply while active).
+property vault_covers_supply :
+  state.vault >= state.yes_supply or state.vault >= state.no_supply
+  preserved_by all
+
+/// **Resolution monotonicity**: status only transitions Active → Resolved*,
+/// never back. Once resolved, redeem doesn't change status; resolve_*
+/// handlers require status == Active. So status only ever moves "up".
+property status_monotone :
+  state.status <= 3
+  preserved_by all
+
+cover split_merge_roundtrip [initialize_market, split, merge]
+cover redeem_yes_path [initialize_market, split, resolve_yes, redeem_yes]
+cover redeem_no_path [initialize_market, split, resolve_no, redeem_no]

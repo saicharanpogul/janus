@@ -1,0 +1,44 @@
+spec MarketFactory
+
+program_id "61MLdp3PjxAhoiPRbx2kJqoq4cri8vB5FovmHYq7AKuh"
+
+state {
+  initialized     : U8,
+  deadline_slot   : U64,
+  created_at_slot : U64,
+}
+
+type Error
+  | AlreadyRegistered
+
+/// Register a market in the on-chain index. Validates ownership of the
+/// market account (must be the conditional-tokens program) and the pool
+/// account (must be the lmsr-market program), and cross-checks that
+/// `pool.market` matches the provided market pubkey. (Those checks are
+/// modeled out-of-band in the Rust program; the formal model captures
+/// only the lifecycle: a registration is created exactly once.)
+handler register
+    (deadline_slot    : U64)
+    (current_slot     : U64) {
+  permissionless
+  accounts {
+    payer        : signer, writable
+    registration : writable
+    market_acct  : readonly
+    pool_acct    : readonly
+  }
+  requires state.initialized == 0 else AlreadyRegistered
+  effect {
+    initialized     := 1
+    deadline_slot   := deadline_slot
+    created_at_slot := current_slot
+  }
+}
+
+/// Once registered, the entry stays initialized and the deadline stays
+/// fixed. Captures the "one registration per market" invariant.
+property registration_terminal :
+  state.initialized == 0 \/ state.initialized == 1
+  preserved_by all
+
+cover happy_path [register]

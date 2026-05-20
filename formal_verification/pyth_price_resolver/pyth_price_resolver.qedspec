@@ -1,0 +1,71 @@
+spec PythPriceResolver
+
+program_id "61MLdp3R75WtTNjW4MfvbCDU43uAB2uUNZhD53kX9hyq"
+
+const COMPARISON_GTE = 0
+const COMPARISON_LT  = 1
+
+state {
+  initialized      : U8,
+  earliest_slot    : U64,
+  threshold_price  : U64,
+  threshold_expo   : U64,
+  comparison       : U8,
+  last_returned    : U8,
+}
+
+type Error
+  | InvalidComparison
+  | AlreadyInitialized
+
+/// Initialize Pyth resolver state with threshold + comparison operator.
+handler initialize
+    (earliest_slot   : U64)
+    (threshold_price : U64)
+    (threshold_expo  : U64)
+    (comparison      : U8) {
+  permissionless
+  accounts {
+    payer          : signer, writable
+    state          : writable
+    authority      : signer
+    system_program : program
+  }
+  requires state.initialized == 0 else AlreadyInitialized
+  requires comparison <= 1 else InvalidComparison
+  effect {
+    initialized     := 1
+    earliest_slot   := earliest_slot
+    threshold_price := threshold_price
+    threshold_expo  := threshold_expo
+    comparison      := comparison
+  }
+}
+
+/// Resolve via four match cases, each writing a different outcome byte.
+handler resolve
+    (clock_slot : U64)
+    (feed_price : U64)
+    (feed_expo  : U64) {
+  permissionless
+  accounts { state : readonly }
+  match
+    | clock_slot < state.earliest_slot => effect { last_returned := 0 }
+    | feed_expo != state.threshold_expo => effect { last_returned := 3 }
+    | state.comparison == 0 and feed_price >= state.threshold_price => effect { last_returned := 1 }
+    | state.comparison == 1 and feed_price < state.threshold_price => effect { last_returned := 1 }
+    | _ => effect { last_returned := 2 }
+}
+
+/// Returned outcome stays in the canonical range {0,1,2,3} regardless of
+/// any feed bytes or slot value.
+property outcome_in_canonical_range :
+  state.last_returned <= 3
+  preserved_by all
+
+/// Comparison stays in {GTE, LT}; initialize rejects anything else.
+property comparison_bounded :
+  state.initialized == 0 \/ (state.comparison == 0 \/ state.comparison == 1)
+  preserved_by all
+
+cover happy_path [initialize, resolve]

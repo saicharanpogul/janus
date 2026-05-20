@@ -14,3 +14,10 @@ sdk/*.tsbuildinfo
 # Local Solana keypairs / wallets — never commit
 *-keypair.json
 *.kp
+# QEDGen-bundled Lean library + Lake build artefacts — regenerable from
+# `qedgen codegen` so we don't commit the multi-MB tree to history.
+formal_verification/*/lean_solana/
+formal_verification/*/lakefile.lean
+formal_verification/*/lean-toolchain
+formal_verification/*/.lake/
+formal_verification/*/build/
