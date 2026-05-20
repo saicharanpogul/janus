@@ -1,0 +1,20 @@
+[package]
+name = "janus-lmsr-market"
+description = "Binary market AMM that pairs with conditional outcome tokens (CPMM in v1; LMSR planned)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+pinocchio.workspace = true
+pinocchio-pubkey.workspace = true
+pinocchio-system.workspace = true
+pinocchio-token.workspace = true
+
+[lints]
+workspace = true

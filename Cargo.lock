@@ -39,6 +39,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "janus-lmsr-market"
+version = "0.1.0"
+dependencies = [
+ "pinocchio",
+ "pinocchio-pubkey",
+ "pinocchio-system",
+ "pinocchio-token",
+]
+
+[[package]]
 name = "janus-pyth-price-resolver"
 version = "0.1.0"
 dependencies = [
