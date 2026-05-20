@@ -12,7 +12,6 @@
 //
 // To run:  cargo kani --harness <name>   (requires cargo-kani)
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
-#![cfg(kani)]
 
 // ============================================================================
 // State model (derived from qedspec — no framework dependencies)
@@ -23,10 +22,6 @@ struct State {
     initialized: u8,
     deadline_slot: u64,
     created_at_slot: u64,
-}
-
-#[derive(Clone, Copy)]
-struct State {
 }
 
 // ============================================================================
@@ -63,8 +58,7 @@ fn register(s: &mut State, deadline_slot: u64, current_slot: u64) -> bool {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_register_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let deadline_slot: u64 = kani::any();
     let current_slot: u64 = kani::any();
     kani::assume(!(s.initialized == 0));
@@ -80,8 +74,7 @@ fn verify_register_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_register_preserves_registration_terminal() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(registration_terminal(&s));
     let deadline_slot: u64 = kani::any();
     let current_slot: u64 = kani::any();
@@ -106,8 +99,7 @@ fn verify_register_preserves_registration_terminal() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn cover_happy_path() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let deadline_slot_0: u64 = kani::any();
     let current_slot_0: u64 = kani::any();
     kani::cover!(register(&mut s, deadline_slot_0, current_slot_0), "happy_path trace is reachable");

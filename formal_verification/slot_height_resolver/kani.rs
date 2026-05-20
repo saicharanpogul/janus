@@ -12,7 +12,6 @@
 //
 // To run:  cargo kani --harness <name>   (requires cargo-kani)
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
-#![cfg(kani)]
 
 // ============================================================================
 // State model (derived from qedspec — no framework dependencies)
@@ -29,10 +28,6 @@ struct State {
     target_slot: u64,
     outcome_at_or_after: u8,
     last_returned: u8,
-}
-
-#[derive(Clone, Copy)]
-struct State {
 }
 
 // ============================================================================
@@ -78,7 +73,7 @@ fn resolve_otherwise(s: &mut State, clock_slot: u64) -> bool {
     if !(!(clock_slot < s.target_slot)) {
         return false;
     }
-    s.last_returned = outcome_at_or_after;
+    s.last_returned = s.outcome_at_or_after;
     true
 }
 
@@ -90,8 +85,7 @@ fn resolve_otherwise(s: &mut State, clock_slot: u64) -> bool {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let target_slot: u64 = kani::any();
     let outcome: u8 = kani::any();
     kani::assume(!(s.initialized == 0 && outcome >= 1 && outcome <= 3));
@@ -103,8 +97,7 @@ fn verify_initialize_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_0_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let clock_slot: u64 = kani::any();
     kani::assume(!(clock_slot < s.target_slot));
     assert!(!resolve_case_0(&mut s, clock_slot),
@@ -115,8 +108,7 @@ fn verify_resolve_case_0_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_otherwise_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let clock_slot: u64 = kani::any();
     kani::assume(!(!(clock_slot < s.target_slot)));
     assert!(!resolve_otherwise(&mut s, clock_slot),
@@ -131,8 +123,7 @@ fn verify_resolve_otherwise_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_preserves_returned_value_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(returned_value_bounded(&s));
     kani::assume(outcome_terminal_after_init(&s));
     let target_slot: u64 = kani::any();
@@ -147,8 +138,7 @@ fn verify_initialize_preserves_returned_value_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_0_preserves_returned_value_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(returned_value_bounded(&s));
     kani::assume(outcome_terminal_after_init(&s));
     let clock_slot: u64 = kani::any();
@@ -162,8 +152,7 @@ fn verify_resolve_case_0_preserves_returned_value_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_otherwise_preserves_returned_value_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(returned_value_bounded(&s));
     kani::assume(outcome_terminal_after_init(&s));
     let clock_slot: u64 = kani::any();
@@ -177,8 +166,7 @@ fn verify_resolve_otherwise_preserves_returned_value_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_preserves_outcome_terminal_after_init() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(returned_value_bounded(&s));
     kani::assume(outcome_terminal_after_init(&s));
     let target_slot: u64 = kani::any();
@@ -193,8 +181,7 @@ fn verify_initialize_preserves_outcome_terminal_after_init() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_0_preserves_outcome_terminal_after_init() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(returned_value_bounded(&s));
     kani::assume(outcome_terminal_after_init(&s));
     let clock_slot: u64 = kani::any();
@@ -208,8 +195,7 @@ fn verify_resolve_case_0_preserves_outcome_terminal_after_init() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_otherwise_preserves_outcome_terminal_after_init() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(returned_value_bounded(&s));
     kani::assume(outcome_terminal_after_init(&s));
     let clock_slot: u64 = kani::any();
@@ -234,12 +220,11 @@ fn verify_resolve_otherwise_preserves_outcome_terminal_after_init() {
 #[kani::unwind(3)]
 #[kani::solver(cadical)]
 fn cover_happy_path() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let target_slot_0: u64 = kani::any();
     let outcome_0: u8 = kani::any();
     if initialize(&mut s, target_slot_0, outcome_0) {
-        kani::cover!(resolve(&mut s), "happy_path trace is reachable");
+        kani::cover!(resolve_otherwise(&mut s, kani::any()), "happy_path trace is reachable");
     }
 }
 

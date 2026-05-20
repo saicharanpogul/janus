@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["programs/*", "crates/*", "tests"]
+members = ["programs/*", "crates/*", "tests", "formal_verification/kani-runner"]
 
 [workspace.package]
 version = "0.1.0"

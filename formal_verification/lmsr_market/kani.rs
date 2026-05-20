@@ -12,7 +12,6 @@
 //
 // To run:  cargo kani --harness <name>   (requires cargo-kani)
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
-#![cfg(kani)]
 
 // ============================================================================
 // State model (derived from qedspec — no framework dependencies)
@@ -27,10 +26,6 @@ struct State {
     yes_reserves: u64,
     no_reserves: u64,
     fee_bps: u64,
-}
-
-#[derive(Clone, Copy)]
-struct State {
 }
 
 // ============================================================================
@@ -147,8 +142,7 @@ fn withdraw_no_after_resolution(s: &mut State, amount: u64) -> bool {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_pool_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let subsidy_yes: u64 = kani::any();
     let subsidy_no: u64 = kani::any();
     let fee_bps: u64 = kani::any();
@@ -161,8 +155,7 @@ fn verify_initialize_pool_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_swap_yes_for_no_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount_in: u64 = kani::any();
     let amount_out: u64 = kani::any();
     let min_amount_out: u64 = kani::any();
@@ -175,8 +168,7 @@ fn verify_swap_yes_for_no_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_swap_no_for_yes_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount_in: u64 = kani::any();
     let amount_out: u64 = kani::any();
     let min_amount_out: u64 = kani::any();
@@ -189,8 +181,7 @@ fn verify_swap_no_for_yes_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_mark_resolved_yes_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(!(s.status == 0));
     assert!(!mark_resolved_yes(&mut s),
         "mark_resolved_yes must reject when guard is violated");
@@ -200,8 +191,7 @@ fn verify_mark_resolved_yes_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_mark_resolved_no_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(!(s.status == 0));
     assert!(!mark_resolved_no(&mut s),
         "mark_resolved_no must reject when guard is violated");
@@ -211,8 +201,7 @@ fn verify_mark_resolved_no_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_withdraw_yes_after_resolution_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount: u64 = kani::any();
     kani::assume(!(s.status == 1 && amount > 0 && amount <= s.yes_reserves));
     assert!(!withdraw_yes_after_resolution(&mut s, amount),
@@ -223,8 +212,7 @@ fn verify_withdraw_yes_after_resolution_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_withdraw_no_after_resolution_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount: u64 = kani::any();
     kani::assume(!(s.status == 2 && amount > 0 && amount <= s.no_reserves));
     assert!(!withdraw_no_after_resolution(&mut s, amount),
@@ -239,8 +227,7 @@ fn verify_withdraw_no_after_resolution_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_pool_preserves_swap_no_drain() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -257,8 +244,7 @@ fn verify_initialize_pool_preserves_swap_no_drain() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_swap_yes_for_no_preserves_swap_no_drain() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -275,8 +261,7 @@ fn verify_swap_yes_for_no_preserves_swap_no_drain() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_swap_no_for_yes_preserves_swap_no_drain() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -293,8 +278,7 @@ fn verify_swap_no_for_yes_preserves_swap_no_drain() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_mark_resolved_yes_preserves_swap_no_drain() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -308,8 +292,7 @@ fn verify_mark_resolved_yes_preserves_swap_no_drain() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_mark_resolved_no_preserves_swap_no_drain() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -323,8 +306,7 @@ fn verify_mark_resolved_no_preserves_swap_no_drain() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_withdraw_yes_after_resolution_preserves_swap_no_drain() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -339,8 +321,7 @@ fn verify_withdraw_yes_after_resolution_preserves_swap_no_drain() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_withdraw_no_after_resolution_preserves_swap_no_drain() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -355,8 +336,7 @@ fn verify_withdraw_no_after_resolution_preserves_swap_no_drain() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_pool_preserves_fee_bps_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -373,8 +353,7 @@ fn verify_initialize_pool_preserves_fee_bps_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_swap_yes_for_no_preserves_fee_bps_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -391,8 +370,7 @@ fn verify_swap_yes_for_no_preserves_fee_bps_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_swap_no_for_yes_preserves_fee_bps_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -409,8 +387,7 @@ fn verify_swap_no_for_yes_preserves_fee_bps_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_mark_resolved_yes_preserves_fee_bps_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -424,8 +401,7 @@ fn verify_mark_resolved_yes_preserves_fee_bps_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_mark_resolved_no_preserves_fee_bps_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -439,8 +415,7 @@ fn verify_mark_resolved_no_preserves_fee_bps_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_withdraw_yes_after_resolution_preserves_fee_bps_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -455,8 +430,7 @@ fn verify_withdraw_yes_after_resolution_preserves_fee_bps_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_withdraw_no_after_resolution_preserves_fee_bps_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -471,8 +445,7 @@ fn verify_withdraw_no_after_resolution_preserves_fee_bps_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_pool_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -489,8 +462,7 @@ fn verify_initialize_pool_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_swap_yes_for_no_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -507,8 +479,7 @@ fn verify_swap_yes_for_no_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_swap_no_for_yes_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -525,8 +496,7 @@ fn verify_swap_no_for_yes_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_mark_resolved_yes_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -540,8 +510,7 @@ fn verify_mark_resolved_yes_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_mark_resolved_no_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -555,8 +524,7 @@ fn verify_mark_resolved_no_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_withdraw_yes_after_resolution_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -571,8 +539,7 @@ fn verify_withdraw_yes_after_resolution_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_withdraw_no_after_resolution_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(swap_no_drain(&s));
     kani::assume(fee_bps_bounded(&s));
     kani::assume(status_monotone(&s));
@@ -598,8 +565,7 @@ fn verify_withdraw_no_after_resolution_preserves_status_monotone() {
 #[kani::unwind(4)]
 #[kani::solver(cadical)]
 fn cover_swap_path() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let subsidy_yes_0: u64 = kani::any();
     let subsidy_no_0: u64 = kani::any();
     let fee_bps_0: u64 = kani::any();
@@ -620,8 +586,7 @@ fn cover_swap_path() {
 #[kani::unwind(4)]
 #[kani::solver(cadical)]
 fn cover_yes_resolution_withdraw() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let subsidy_yes_0: u64 = kani::any();
     let subsidy_no_0: u64 = kani::any();
     let fee_bps_0: u64 = kani::any();
@@ -637,8 +602,7 @@ fn cover_yes_resolution_withdraw() {
 #[kani::unwind(4)]
 #[kani::solver(cadical)]
 fn cover_no_resolution_withdraw() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let subsidy_yes_0: u64 = kani::any();
     let subsidy_no_0: u64 = kani::any();
     let fee_bps_0: u64 = kani::any();
@@ -658,8 +622,7 @@ fn cover_no_resolution_withdraw() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_swap_yes_for_no_no_overflow() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount_in: u64 = kani::any();
     let amount_out: u64 = kani::any();
     let min_amount_out: u64 = kani::any();
@@ -670,8 +633,7 @@ fn verify_swap_yes_for_no_no_overflow() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_swap_no_for_yes_no_overflow() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount_in: u64 = kani::any();
     let amount_out: u64 = kani::any();
     let min_amount_out: u64 = kani::any();

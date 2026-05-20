@@ -12,7 +12,6 @@
 //
 // To run:  cargo kani --harness <name>   (requires cargo-kani)
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
-#![cfg(kani)]
 
 // ============================================================================
 // State model (derived from qedspec — no framework dependencies)
@@ -29,10 +28,6 @@ struct State {
     threshold_expo: u64,
     comparison: u8,
     last_returned: u8,
-}
-
-#[derive(Clone, Copy)]
-struct State {
 }
 
 // ============================================================================
@@ -116,8 +111,7 @@ fn resolve_otherwise(s: &mut State, clock_slot: u64, feed_price: u64, feed_expo:
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let earliest_slot: u64 = kani::any();
     let threshold_price: u64 = kani::any();
     let threshold_expo: u64 = kani::any();
@@ -131,8 +125,7 @@ fn verify_initialize_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_0_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let clock_slot: u64 = kani::any();
     let feed_price: u64 = kani::any();
     let feed_expo: u64 = kani::any();
@@ -145,8 +138,7 @@ fn verify_resolve_case_0_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_1_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let clock_slot: u64 = kani::any();
     let feed_price: u64 = kani::any();
     let feed_expo: u64 = kani::any();
@@ -159,8 +151,7 @@ fn verify_resolve_case_1_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_2_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let clock_slot: u64 = kani::any();
     let feed_price: u64 = kani::any();
     let feed_expo: u64 = kani::any();
@@ -173,8 +164,7 @@ fn verify_resolve_case_2_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_3_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let clock_slot: u64 = kani::any();
     let feed_price: u64 = kani::any();
     let feed_expo: u64 = kani::any();
@@ -187,8 +177,7 @@ fn verify_resolve_case_3_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_otherwise_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let clock_slot: u64 = kani::any();
     let feed_price: u64 = kani::any();
     let feed_expo: u64 = kani::any();
@@ -205,8 +194,7 @@ fn verify_resolve_otherwise_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_preserves_outcome_in_canonical_range() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let earliest_slot: u64 = kani::any();
@@ -223,8 +211,7 @@ fn verify_initialize_preserves_outcome_in_canonical_range() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_0_preserves_outcome_in_canonical_range() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let clock_slot: u64 = kani::any();
@@ -240,8 +227,7 @@ fn verify_resolve_case_0_preserves_outcome_in_canonical_range() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_1_preserves_outcome_in_canonical_range() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let clock_slot: u64 = kani::any();
@@ -257,8 +243,7 @@ fn verify_resolve_case_1_preserves_outcome_in_canonical_range() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_2_preserves_outcome_in_canonical_range() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let clock_slot: u64 = kani::any();
@@ -274,8 +259,7 @@ fn verify_resolve_case_2_preserves_outcome_in_canonical_range() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_3_preserves_outcome_in_canonical_range() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let clock_slot: u64 = kani::any();
@@ -291,8 +275,7 @@ fn verify_resolve_case_3_preserves_outcome_in_canonical_range() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_otherwise_preserves_outcome_in_canonical_range() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let clock_slot: u64 = kani::any();
@@ -308,8 +291,7 @@ fn verify_resolve_otherwise_preserves_outcome_in_canonical_range() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_preserves_comparison_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let earliest_slot: u64 = kani::any();
@@ -326,8 +308,7 @@ fn verify_initialize_preserves_comparison_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_0_preserves_comparison_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let clock_slot: u64 = kani::any();
@@ -343,8 +324,7 @@ fn verify_resolve_case_0_preserves_comparison_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_1_preserves_comparison_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let clock_slot: u64 = kani::any();
@@ -360,8 +340,7 @@ fn verify_resolve_case_1_preserves_comparison_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_2_preserves_comparison_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let clock_slot: u64 = kani::any();
@@ -377,8 +356,7 @@ fn verify_resolve_case_2_preserves_comparison_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_case_3_preserves_comparison_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let clock_slot: u64 = kani::any();
@@ -394,8 +372,7 @@ fn verify_resolve_case_3_preserves_comparison_bounded() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_otherwise_preserves_comparison_bounded() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(outcome_in_canonical_range(&s));
     kani::assume(comparison_bounded(&s));
     let clock_slot: u64 = kani::any();
@@ -422,14 +399,13 @@ fn verify_resolve_otherwise_preserves_comparison_bounded() {
 #[kani::unwind(3)]
 #[kani::solver(cadical)]
 fn cover_happy_path() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let earliest_slot_0: u64 = kani::any();
     let threshold_price_0: u64 = kani::any();
     let threshold_expo_0: u64 = kani::any();
     let comparison_0: u8 = kani::any();
     if initialize(&mut s, earliest_slot_0, threshold_price_0, threshold_expo_0, comparison_0) {
-        kani::cover!(resolve(&mut s), "happy_path trace is reachable");
+        kani::cover!(resolve_otherwise(&mut s, kani::any(), kani::any(), kani::any()), "happy_path trace is reachable");
     }
 }
 

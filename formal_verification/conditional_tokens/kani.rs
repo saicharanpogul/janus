@@ -12,7 +12,6 @@
 //
 // To run:  cargo kani --harness <name>   (requires cargo-kani)
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
-#![cfg(kani)]
 
 // ============================================================================
 // State model (derived from qedspec — no framework dependencies)
@@ -31,10 +30,6 @@ struct State {
     yes_supply: u64,
     no_supply: u64,
     vault: u64,
-}
-
-#[derive(Clone, Copy)]
-struct State {
 }
 
 // ============================================================================
@@ -184,8 +179,7 @@ fn redeem_no(s: &mut State, amount: u64) -> bool {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_market_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let initial_collateral: u64 = kani::any();
     kani::assume(!(s.initialized == 0));
     assert!(!initialize_market(&mut s, initial_collateral),
@@ -196,8 +190,7 @@ fn verify_initialize_market_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_split_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount: u64 = kani::any();
     kani::assume(!(s.initialized == 1 && s.status == 0 && amount > 0 && s.collateral_balance >= amount));
     assert!(!split(&mut s, amount),
@@ -208,8 +201,7 @@ fn verify_split_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_merge_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount: u64 = kani::any();
     kani::assume(!(s.initialized == 1 && s.status == 0 && amount > 0 && s.yes_supply >= amount && s.no_supply >= amount && s.vault >= amount));
     assert!(!merge(&mut s, amount),
@@ -220,8 +212,7 @@ fn verify_merge_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_yes_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(!(s.initialized == 1 && s.status == 0));
     assert!(!resolve_yes(&mut s),
         "resolve_yes must reject when guard is violated");
@@ -231,8 +222,7 @@ fn verify_resolve_yes_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_no_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(!(s.initialized == 1 && s.status == 0));
     assert!(!resolve_no(&mut s),
         "resolve_no must reject when guard is violated");
@@ -242,8 +232,7 @@ fn verify_resolve_no_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_redeem_yes_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount: u64 = kani::any();
     kani::assume(!(s.status == 1 && amount > 0 && s.yes_supply >= amount && s.vault >= amount));
     assert!(!redeem_yes(&mut s, amount),
@@ -254,8 +243,7 @@ fn verify_redeem_yes_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_redeem_no_rejects_invalid() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount: u64 = kani::any();
     kani::assume(!(s.status == 2 && amount > 0 && s.no_supply >= amount && s.vault >= amount));
     assert!(!redeem_no(&mut s, amount),
@@ -270,8 +258,7 @@ fn verify_redeem_no_rejects_invalid() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_market_preserves_yes_no_paired_while_active() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -286,8 +273,7 @@ fn verify_initialize_market_preserves_yes_no_paired_while_active() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_split_preserves_yes_no_paired_while_active() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -302,8 +288,7 @@ fn verify_split_preserves_yes_no_paired_while_active() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_merge_preserves_yes_no_paired_while_active() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -318,8 +303,7 @@ fn verify_merge_preserves_yes_no_paired_while_active() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_yes_preserves_yes_no_paired_while_active() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -333,8 +317,7 @@ fn verify_resolve_yes_preserves_yes_no_paired_while_active() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_no_preserves_yes_no_paired_while_active() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -348,8 +331,7 @@ fn verify_resolve_no_preserves_yes_no_paired_while_active() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_redeem_yes_preserves_yes_no_paired_while_active() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -364,8 +346,7 @@ fn verify_redeem_yes_preserves_yes_no_paired_while_active() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_redeem_no_preserves_yes_no_paired_while_active() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -380,8 +361,7 @@ fn verify_redeem_no_preserves_yes_no_paired_while_active() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_market_preserves_vault_covers_supply() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -396,8 +376,7 @@ fn verify_initialize_market_preserves_vault_covers_supply() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_split_preserves_vault_covers_supply() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -412,8 +391,7 @@ fn verify_split_preserves_vault_covers_supply() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_merge_preserves_vault_covers_supply() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -428,8 +406,7 @@ fn verify_merge_preserves_vault_covers_supply() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_yes_preserves_vault_covers_supply() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -443,8 +420,7 @@ fn verify_resolve_yes_preserves_vault_covers_supply() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_no_preserves_vault_covers_supply() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -458,8 +434,7 @@ fn verify_resolve_no_preserves_vault_covers_supply() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_redeem_yes_preserves_vault_covers_supply() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -474,8 +449,7 @@ fn verify_redeem_yes_preserves_vault_covers_supply() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_redeem_no_preserves_vault_covers_supply() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -490,8 +464,7 @@ fn verify_redeem_no_preserves_vault_covers_supply() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_initialize_market_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -506,8 +479,7 @@ fn verify_initialize_market_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_split_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -522,8 +494,7 @@ fn verify_split_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_merge_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -538,8 +509,7 @@ fn verify_merge_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_yes_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -553,8 +523,7 @@ fn verify_resolve_yes_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_resolve_no_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -568,8 +537,7 @@ fn verify_resolve_no_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_redeem_yes_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -584,8 +552,7 @@ fn verify_redeem_yes_preserves_status_monotone() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_redeem_no_preserves_status_monotone() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     kani::assume(yes_no_paired_while_active(&s));
     kani::assume(vault_covers_supply(&s));
     kani::assume(status_monotone(&s));
@@ -611,8 +578,7 @@ fn verify_redeem_no_preserves_status_monotone() {
 #[kani::unwind(4)]
 #[kani::solver(cadical)]
 fn cover_split_merge_roundtrip() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let initial_collateral_0: u64 = kani::any();
     if initialize_market(&mut s, initial_collateral_0) {
         let amount_1: u64 = kani::any();
@@ -627,8 +593,7 @@ fn cover_split_merge_roundtrip() {
 #[kani::unwind(5)]
 #[kani::solver(cadical)]
 fn cover_redeem_yes_path() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let initial_collateral_0: u64 = kani::any();
     if initialize_market(&mut s, initial_collateral_0) {
         let amount_1: u64 = kani::any();
@@ -645,8 +610,7 @@ fn cover_redeem_yes_path() {
 #[kani::unwind(5)]
 #[kani::solver(cadical)]
 fn cover_redeem_no_path() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let initial_collateral_0: u64 = kani::any();
     if initialize_market(&mut s, initial_collateral_0) {
         let amount_1: u64 = kani::any();
@@ -667,8 +631,7 @@ fn cover_redeem_no_path() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_split_no_overflow() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount: u64 = kani::any();
     split(&mut s, amount);  // Kani detects overflow on += internally
 }
@@ -677,8 +640,7 @@ fn verify_split_no_overflow() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_merge_no_overflow() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount: u64 = kani::any();
     merge(&mut s, amount);  // Kani detects overflow on += internally
 }
@@ -687,8 +649,7 @@ fn verify_merge_no_overflow() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_redeem_yes_no_overflow() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount: u64 = kani::any();
     redeem_yes(&mut s, amount);  // Kani detects overflow on += internally
 }
@@ -697,8 +658,7 @@ fn verify_redeem_yes_no_overflow() {
 #[kani::unwind(2)]
 #[kani::solver(cadical)]
 fn verify_redeem_no_no_overflow() {
-    let mut s = State {
-    };
+    let mut s: State = kani::any();
     let amount: u64 = kani::any();
     redeem_no(&mut s, amount);  // Kani detects overflow on += internally
 }
