@@ -1,15 +1,11 @@
-import Mathlib.Algebra.BigOperators.Fin
 import QEDGen.Solana.Account
-import QEDGenMathlib.IndexedState
 
 namespace LmsrMarket
 
-open QEDGen.Solana
-open QEDGen.Solana.IndexedState
+open QEDGen.Solana.Account
+abbrev Pubkey := QEDGen.Solana.Account.Pubkey
 
 abbrev MAX_FEE_BPS : Nat := 1000
-
-abbrev AccountIdx : Type := Fin MAX_FEE_BPS
 
 structure State where
   initialized : Nat
@@ -26,8 +22,6 @@ instance : Inhabited State := ⟨{
   no_reserves := 0,
   fee_bps := 0,
 }⟩
-
-structure State where
 
 def initialize_poolTransition (s : State) (signer : Pubkey) (subsidy_yes : Nat) (subsidy_no : Nat) (fee_bps : Nat) : Option State :=
   let payer := signer

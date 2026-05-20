@@ -1,18 +1,14 @@
-import Mathlib.Algebra.BigOperators.Fin
 import QEDGen.Solana.Account
-import QEDGenMathlib.IndexedState
 
 namespace ConditionalTokens
 
-open QEDGen.Solana
-open QEDGen.Solana.IndexedState
+open QEDGen.Solana.Account
+abbrev Pubkey := QEDGen.Solana.Account.Pubkey
 
 abbrev STATUS_ACTIVE : Nat := 0
 abbrev STATUS_RESOLVED_YES : Nat := 1
 abbrev STATUS_RESOLVED_NO : Nat := 2
 abbrev STATUS_RESOLVED_INVALID : Nat := 3
-
-abbrev AccountIdx : Type := Fin 1024
 
 structure State where
   initialized : Nat
@@ -31,8 +27,6 @@ instance : Inhabited State := ⟨{
   no_supply := 0,
   vault := 0,
 }⟩
-
-structure State where
 
 def initialize_marketTransition (s : State) (signer : Pubkey) (initial_collateral : Nat) : Option State :=
   if (s.initialized = 0) then
