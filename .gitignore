@@ -22,3 +22,4 @@ formal_verification/*/lean-toolchain
 formal_verification/*/.lake/
 formal_verification/*/build/
 lake-manifest.json
+.qed/

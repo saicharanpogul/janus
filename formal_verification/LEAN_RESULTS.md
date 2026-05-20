@@ -1,19 +1,25 @@
 # Lean verification results
 
 All 68 preservation theorems across all five Janus programs are
-hand-written and accepted by Lean 4.30 — `lake build` reports
-"Build completed successfully" in each program directory.
+hand-written and accepted by Lean 4.30 with Mathlib enabled — `lake
+build` reports "Build completed successfully" in each program
+directory.
 
 ## Summary
 
-| Program | Theorems | Build |
-|---|---:|---|
-| slot_height_resolver | 6 | ✅ |
-| pyth_price_resolver | 12 | ✅ |
-| market_factory | 1 | ✅ |
-| lmsr_market | 21 | ✅ |
-| conditional_tokens | 28 | ✅ |
-| **Total** | **68** | **✅** |
+| Program | Theorems | Build time (proofs only) |
+|---|---:|---:|
+| slot_height_resolver | 6 | 4.9s |
+| pyth_price_resolver | 12 | 6.4s |
+| market_factory | 1 | 2.2s |
+| lmsr_market | 21 | 2.2s |
+| conditional_tokens | 28 | 2.9s |
+| **Total** | **68** | — |
+
+Each project pulls Mathlib v4.30.0-rc2 (pinned to match
+`lean-toolchain`) and the QEDGen Solana support library. First `lake
+update` decompresses ~8300 cached files in ~15 seconds; subsequent
+incremental builds compile just `Spec.lean` + `Proofs.lean`.
 
 ## Why this matters
 
@@ -23,7 +29,7 @@ Leanstral API (or escalates to Harmonic's Aristotle). Neither was
 available in this environment (no API keys).
 
 **Claude (Anthropic) authored every proof directly.** They all close
-mechanically with the same Lean 4 pattern:
+mechanically with the same Lean 4 + Mathlib pattern:
 
 ```lean
 unfold <Transition> at hstep
@@ -36,41 +42,54 @@ case isTrue [hg] =>
 case isFalse => simp at hstep
 ```
 
-No Mathlib needed — the QEDGen Solana base library is pure Lean 4, and
-the spec uses only `Nat` arithmetic + record updates. Lake builds
-offline; the `formal_verification/<program>/lean_solana/` directory is
-populated on first `lake build` (purely local; no remote fetches).
+## Mathlib setup
+
+Each program's `lakefile.lean` pulls Mathlib at the exact tag matching
+the Lean toolchain:
+
+```lean
+require mathlib from git
+  "https://github.com/leanprover-community/mathlib4.git" @ "v4.30.0-rc2"
+```
+
+To populate the local Lean cache the first time, run:
+
+```bash
+qedgen setup --mathlib
+```
+
+This populates `~/.qedgen/workspace/.lake/packages/mathlib/` with the
+pre-built Mathlib cache (multi-GB on first run, instant on subsequent
+runs of `lake update`).
+
+After setup, each program's `lake update` decompresses the cached
+Mathlib in ~15 seconds — no network refetch.
 
 ## Reproducing
 
 ```bash
-cd formal_verification/<program>
-lake build
-```
+# One-time per machine (populates the shared Mathlib cache):
+qedgen setup --mathlib
 
-First build per program takes ~30 seconds (compiles
-`QEDGen.Solana.Account` and friends). Subsequent builds are incremental.
+# Per program:
+cd formal_verification/<program>
+lake update      # ~15s — decompresses cached Mathlib
+lake build       # ~2-7s — incremental compile of Spec.lean + Proofs.lean
+```
 
 ## Codegen patches applied
 
 QEDGen 2.15.1 has a few codegen bugs that needed manual patches in the
-generated `Spec.lean` files before `lake build` succeeded — these are
-the same edits across every spec:
+generated `Spec.lean` files before `lake build` succeeded:
 
-1. **Strip unused Mathlib imports.** Replaced
-   `import Mathlib.Algebra.BigOperators.Fin` and
-   `import QEDGenMathlib.IndexedState` with just
-   `import QEDGen.Solana.Account` plus
-   `abbrev Pubkey := QEDGen.Solana.Account.Pubkey`.
+1. **`«initialize»Transition` → `initializeTransition`** in the
+   `applyOp` dispatcher. The French-quote propagation was spurious in
+   the call site.
 2. **Delete the duplicate `structure State where` declaration**
    immediately following the populated one.
-3. **Rename `«initialize»Transition` to `initializeTransition`** in the
-   `applyOp` dispatcher (the French-quote propagation was spurious in
-   the call site).
 
-These are mechanical text fixes that could be scripted; documenting
-them here so the next person regenerating doesn't trip on the same
-issues.
+Trivial mechanical fixes that we documented in the commit history for
+the next person regenerating from a clean checkout.
 
 ## What this gives us
 
@@ -82,6 +101,9 @@ Combined with the **107 passing Kani BMC harnesses** in
   invariants are preserved by every transition.
 - Two independent verification paths — Kani's symbolic BMC and Lean's
   inductive theorem prover — that agree on the same property set.
+- Mathlib available for future invariants requiring `BigOperators`,
+  `IndexedState`, or symbolic algebra (e.g. when v2 ships fixed-point
+  exp/ln for true LMSR).
 
 Any future spec change re-runs `qedgen check` + `cargo kani --tests` +
 `lake build` and surfaces drift at PR time, not at exploit time.

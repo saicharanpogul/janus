@@ -1,3 +1,4 @@
+import Mathlib.Algebra.BigOperators.Fin
 import QEDGen.Solana.Account
 
 namespace SlotHeightResolver
