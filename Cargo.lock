@@ -30,11 +30,39 @@ checksum = "2551bf44bc5f776c15044b9b94153a00198be06743e262afaaa61f11ac7523a5"
 name = "janus-conditional-tokens"
 version = "0.1.0"
 dependencies = [
+ "janus-resolver-interface",
  "pinocchio",
  "pinocchio-log",
  "pinocchio-pubkey",
  "pinocchio-system",
  "pinocchio-token",
+]
+
+[[package]]
+name = "janus-pyth-price-resolver"
+version = "0.1.0"
+dependencies = [
+ "janus-resolver-interface",
+ "pinocchio",
+ "pinocchio-pubkey",
+ "pinocchio-system",
+]
+
+[[package]]
+name = "janus-resolver-interface"
+version = "0.1.0"
+dependencies = [
+ "pinocchio",
+]
+
+[[package]]
+name = "janus-slot-height-resolver"
+version = "0.1.0"
+dependencies = [
+ "janus-resolver-interface",
+ "pinocchio",
+ "pinocchio-pubkey",
+ "pinocchio-system",
 ]
 
 [[package]]

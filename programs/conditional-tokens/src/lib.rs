@@ -23,7 +23,10 @@ use crate::instruction::InstructionTag;
 
 entrypoint!(process_instruction);
 
-pinocchio_pubkey::declare_id!("Janus11111111111111111111111111111111111111");
+// Placeholder program ID — replace before deployment by running
+// `solana-keygen new -o target/deploy/janus_conditional_tokens-keypair.json`
+// and pasting the resulting pubkey here.
+pinocchio_pubkey::declare_id!("61MLdp3EEExnhh6W9BYT8Jj52ZoXYoQn6PHKmxtrsc7y");
 
 pub fn process_instruction(
     program_id: &Pubkey,

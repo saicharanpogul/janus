@@ -1,6 +1,6 @@
 [package]
-name = "janus-conditional-tokens"
-description = "Conditional outcome tokens primitive for binary markets on Solana"
+name = "janus-slot-height-resolver"
+description = "Janus resolver: resolves YES (or operator-chosen outcome) once a target slot is reached"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,13 +10,11 @@ authors.workspace = true
 [lib]
 crate-type = ["cdylib", "lib"]
 
-[lints]
-workspace = true
-
 [dependencies]
 pinocchio.workspace = true
 pinocchio-pubkey.workspace = true
 pinocchio-system.workspace = true
-pinocchio-token.workspace = true
-pinocchio-log.workspace = true
 janus-resolver-interface = { path = "../../crates/resolver-interface", version = "0.1.0" }
+
+[lints]
+workspace = true

@@ -1,6 +1,10 @@
+use core::mem::MaybeUninit;
+
+use janus_resolver_interface::{ResolutionOutcome, RESOLVE_INSTRUCTION_TAG};
 use pinocchio::{
     account_info::AccountInfo,
-    instruction::{Seed, Signer},
+    instruction::{AccountMeta, Instruction, Seed, Signer},
+    program::{get_return_data, slice_invoke},
     program_error::ProgramError,
     pubkey::{create_program_address, Pubkey},
     sysvars::{clock::Clock, Sysvar},
@@ -11,6 +15,10 @@ use pinocchio_token::{
     instructions::{Burn, InitializeAccount3, InitializeMint2, MintTo, Transfer},
     state::{Mint, TokenAccount},
 };
+
+/// Maximum number of accounts the conditional-tokens Resolve instruction
+/// will forward to a resolver program. Keeps the CPI stack bounded.
+const MAX_RESOLVER_ACCOUNTS: usize = 6;
 
 use crate::{
     error::ConditionalTokensError,
@@ -496,28 +504,36 @@ pub fn process_redeem(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
 // -------------------------------------------------------------------------
 
 /// Accounts:
-///   0. `[signer]`   caller (anyone may call once the deadline has passed)
-///   1. `[writable]` market
-///   2. `[readonly]` resolver program (must match `market.resolver_program`)
-///   3. `[readonly]` resolver state account (must match `market.resolver_state`)
-///   4+. additional accounts forwarded to the resolver as-is
+///   0. `[signer]`    caller (anyone may call once the deadline has passed)
+///   1. `[writable]`  market
+///   2. `[readonly]`  resolver program (must match `market.resolver_program`)
+///   3. `[readonly]`  resolver state account (must match `market.resolver_state`)
+///   4..N. additional accounts forwarded to the resolver verbatim
+///         (up to `MAX_RESOLVER_ACCOUNTS - 1` additional accounts)
 ///
-/// The resolver is expected to expose a single instruction returning a
-/// 1-byte outcome via `set_return_data`:
+/// The bound resolver is invoked with discriminator `0` and no payload.
+/// It must report its determination via `set_return_data` as a single byte
+/// matching [`janus_resolver_interface::ResolutionOutcome`]:
+///
+///   - `0` = UNRESOLVED (resolver cannot yet determine; this ix errors)
 ///   - `1` = YES wins
 ///   - `2` = NO wins
-///   - `3` = INVALID
-///   - `0` = UNRESOLVED (resolver does not yet have a determination)
-///
-/// TODO: the actual CPI to the resolver is wired in once the resolver
-/// registry program lands; for now we only validate accounts and the
-/// deadline so users get the right error shape during development.
+///   - `3` = INVALID (market unwinds via merge)
 pub fn process_resolve(accounts: &[AccountInfo], _data: &[u8]) -> ProgramResult {
-    let [caller, market_ai, resolver_program_ai, resolver_state_ai, ..] = accounts else {
+    if accounts.len() < 4 {
         return Err(ProgramError::NotEnoughAccountKeys);
-    };
+    }
+    let caller = &accounts[0];
+    let market_ai = &accounts[1];
+    let resolver_program_ai = &accounts[2];
+    let resolver_state_ai = &accounts[3];
+    let forwarded = &accounts[3..];
+
     if !caller.is_signer() {
         return Err(ProgramError::MissingRequiredSignature);
+    }
+    if forwarded.len() > MAX_RESOLVER_ACCOUNTS {
+        return Err(ProgramError::InvalidArgument);
     }
 
     let market = read_market(market_ai)?;
@@ -535,11 +551,63 @@ pub fn process_resolve(accounts: &[AccountInfo], _data: &[u8]) -> ProgramResult 
         return Err(ConditionalTokensError::DeadlineNotReached.into());
     }
 
-    // TODO(resolver-registry): CPI to resolver and decode return data.
-    // Until the resolver program ships, this instruction stops here and
-    // returns a clear "not implemented" custom error so tests can pin the
-    // contract surface without depending on resolver code yet.
-    Err(ConditionalTokensError::InvalidResolver.into())
+    // ---- Build the resolver CPI ----
+
+    // AccountMetas: copy from the forwarded AccountInfos. Read-only for all
+    // because resolvers should never need to mutate state during a query;
+    // they only read.
+    let mut meta_buf: [MaybeUninit<AccountMeta>; MAX_RESOLVER_ACCOUNTS] =
+        [const { MaybeUninit::uninit() }; MAX_RESOLVER_ACCOUNTS];
+    let mut info_buf: [MaybeUninit<&AccountInfo>; MAX_RESOLVER_ACCOUNTS] =
+        [const { MaybeUninit::uninit() }; MAX_RESOLVER_ACCOUNTS];
+    for (i, ai) in forwarded.iter().enumerate() {
+        meta_buf[i].write(AccountMeta::readonly(ai.key()));
+        info_buf[i].write(ai);
+    }
+    // SAFETY: `forwarded.len()` elements initialised above; the slice we
+    // hand to `slice_invoke` is bounded by that length so we never read
+    // uninitialised memory.
+    let metas: &[AccountMeta] = unsafe {
+        core::slice::from_raw_parts(meta_buf.as_ptr() as *const AccountMeta, forwarded.len())
+    };
+    let infos: &[&AccountInfo] = unsafe {
+        core::slice::from_raw_parts(info_buf.as_ptr() as *const &AccountInfo, forwarded.len())
+    };
+
+    let ix_data = [RESOLVE_INSTRUCTION_TAG];
+    let ix = Instruction {
+        program_id: resolver_program_ai.key(),
+        accounts: metas,
+        data: &ix_data,
+    };
+    slice_invoke(&ix, infos)?;
+
+    // ---- Read back the outcome byte ----
+    let ret = get_return_data().ok_or(ConditionalTokensError::InvalidResolver)?;
+    if ret.program_id() != resolver_program_ai.key() {
+        return Err(ConditionalTokensError::InvalidResolver.into());
+    }
+    let bytes = ret.as_slice();
+    if bytes.len() != 1 {
+        return Err(ConditionalTokensError::InvalidResolver.into());
+    }
+    let outcome = ResolutionOutcome::try_from(bytes[0])
+        .map_err(|_| ConditionalTokensError::InvalidResolver)?;
+
+    let status = match outcome {
+        ResolutionOutcome::Unresolved => {
+            return Err(ConditionalTokensError::DeadlineNotReached.into())
+        }
+        ResolutionOutcome::Yes => MarketStatus::ResolvedYes,
+        ResolutionOutcome::No => MarketStatus::ResolvedNo,
+        ResolutionOutcome::Invalid => MarketStatus::ResolvedInvalid,
+    };
+
+    // ---- Write status into the market ----
+    let mut data_ref = market_ai.try_borrow_mut_data()?;
+    let m = Market::from_account_data_mut(&mut data_ref)?;
+    m.status = status as u8;
+    Ok(())
 }
 
 // -------------------------------------------------------------------------
