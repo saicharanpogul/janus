@@ -21,28 +21,62 @@ The "tail" thesis: ~70% of crypto-native market outcomes are deterministic on-ch
 
 ## Status
 
-Early. Scaffolding only. Built on Pinocchio for CU efficiency.
+v0 — every program scaffolded and the SDK shipped. All Rust crates
+build clean on host; SBF deploy + integration testing is the next
+milestone.
 
 ```
 janus/
+├── crates/
+│   └── resolver-interface/      ✅ shared resolver protocol types
 ├── programs/
-│   ├── conditional-tokens/   ← starting here
-│   ├── lmsr-market/          (todo)
-│   ├── resolver-registry/    (todo)
-│   ├── market-factory/       (todo)
-│   └── resolvers/            (todo: pyth, slot-height, token-balance, on-chain-event, optimistic)
-├── sdk/                      (todo)
-├── app/                      (todo)
-└── docs/                     (todo)
+│   ├── conditional-tokens/      ✅ asset layer: init, split, merge, redeem, resolve
+│   ├── lmsr-market/             ✅ binary AMM (CPMM in v1; true LMSR planned)
+│   ├── slot-height-resolver/    ✅ reference resolver — outcome at target slot
+│   ├── pyth-price-resolver/     ✅ resolves YES/NO via Pyth feed crossing
+│   └── market-factory/          ✅ on-chain registry for discovery
+├── sdk/                         ✅ TypeScript client + createMarket helper
+└── app/                         (frontend — next)
 ```
 
 ## Build
 
 ```bash
+# Rust programs (host check):
+cargo build --release --workspace
+
+# SBF programs (for deploy):
 cargo build-sbf
+
+# TypeScript SDK:
+cd sdk && pnpm install && pnpm build
 ```
 
-(Requires Solana toolchain. Pinocchio versions in `Cargo.toml` may need bumping to current.)
+Before deploying, replace each program's placeholder `declare_id!`
+pubkey with a real keypair generated via `solana-keygen new -o
+target/deploy/<program_name>-keypair.json`, and update the matching
+constant in `sdk/src/constants.ts` plus the cross-references in
+`market-factory/src/lib.rs`.
+
+## Architecture
+
+A market is the composition of four objects:
+
+1. **A resolver state account**, owned by some resolver program that
+   implements the standard interface defined in
+   [`crates/resolver-interface`](./crates/resolver-interface).
+2. **A `conditional-tokens` market PDA**, which mints YES + NO outcome
+   tokens against deposited collateral, holds a vault of that collateral,
+   and binds itself to a specific resolver at creation.
+3. **An `lmsr-market` pool PDA**, holding reserves of YES + NO tokens
+   contributed by the creator as subsidy, that quotes prices via a
+   constant-product curve.
+4. **A `market-factory` registration PDA**, recording the full bundle
+   for trustless discovery.
+
+Outcome tokens are plain SPL tokens. Any DEX, lending market, or vault
+on Solana composes against them without knowing they're prediction-market
+positions. That's the primitive: not a product, a substrate.
 
 ## License
 
