@@ -1,0 +1,10 @@
+target/
+**/*.rs.bk
+.DS_Store
+.vscode/
+.idea/
+node_modules/
+.env
+.env.local
+*.so
+test-ledger/

@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = ["programs/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/saicharanpogul/janus"
+authors = ["Sai Charan Pogul"]
+
+[workspace.dependencies]
+pinocchio = "0.8"
+pinocchio-pubkey = "0.2"
+pinocchio-system = "0.2"
+pinocchio-token = "0.3"
+pinocchio-log = "0.4"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(target_os, values("solana"))'] }
