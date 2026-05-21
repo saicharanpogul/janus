@@ -67,8 +67,17 @@ export default function CreatePage() {
       const setupIxs: any[] = [];
       let mintSigner: Keypair | null = null;
 
+      const subsidy = BigInt(Math.floor(parseFloat(subsidyStr) * 1e6));
+      if (!(subsidy > 0n)) throw new Error("Subsidy must be > 0");
+      const deadline = BigInt(deadlineSlot);
+      if (deadline <= BigInt(currentSlot))
+        throw new Error("Deadline slot must be in the future");
+
       if (mintTestColl) {
         // Create a fresh test collateral mint owned by the user.
+        // Mint enough to comfortably cover the subsidy: max(1e12, subsidy * 10).
+        const mintAmount =
+          subsidy * 10n > 1_000_000_000_000n ? subsidy * 10n : 1_000_000_000_000n;
         mintSigner = Keypair.generate();
         const rent = await getMinimumBalanceForRentExemptMint(connection);
         setupIxs.push(
@@ -82,11 +91,10 @@ export default function CreatePage() {
           createInitializeMintInstruction(mintSigner.publicKey, 6, owner, null, TOKEN_PROGRAM_ID),
         );
         collateralMint = mintSigner.publicKey;
-        // Mint a generous balance to the user's ATA.
         const ata = getAssociatedTokenAddressSync(collateralMint, owner, true);
         setupIxs.push(
           createAssociatedTokenAccountIdempotentInstruction(owner, ata, owner, collateralMint),
-          createMintToInstruction(collateralMint, ata, owner, 1_000_000_000_000n /* 1e6 USDC-like */),
+          createMintToInstruction(collateralMint, ata, owner, mintAmount),
         );
       } else {
         try {
@@ -106,11 +114,26 @@ export default function CreatePage() {
         ),
       );
 
-      const subsidy = BigInt(Math.floor(parseFloat(subsidyStr) * 1e6));
-      if (!(subsidy > 0n)) throw new Error("Subsidy must be > 0");
-      const deadline = BigInt(deadlineSlot);
-      if (deadline <= BigInt(currentSlot))
-        throw new Error("Deadline slot must be in the future");
+      // Pre-flight balance check for the BYO-collateral case. (For the
+      // test-mint case, the mint just happens in setupIxs above.)
+      if (!mintTestColl) {
+        const info = await connection.getAccountInfo(userCollateralAta, "confirmed");
+        if (!info) {
+          throw new Error(
+            `Your collateral ATA ${userCollateralAta.toBase58()} doesn't exist yet. ` +
+              `Mint or transfer some of ${collateralMint.toBase58()} to it first, ` +
+              `or check "Mint a fresh test collateral" above.`,
+          );
+        }
+        const bal = BigInt(AccountLayout.decode(info.data).amount.toString());
+        if (bal < subsidy) {
+          throw new Error(
+            `Insufficient collateral balance: have ${(Number(bal) / 1e6).toFixed(2)}, ` +
+              `need ${(Number(subsidy) / 1e6).toFixed(2)} for the requested subsidy. ` +
+              `Either reduce the subsidy or fund your ATA first.`,
+          );
+        }
+      }
 
       const questionHash = question.trim()
         ? new TextEncoder().encode(question.trim()).slice(0, 32)
@@ -147,18 +170,43 @@ export default function CreatePage() {
         await connection.confirmTransaction(sig1, "confirmed");
         sigs.push(sig1);
       }
-      // tx2: market creation flow (SDK already splits internally)
+
+      // Re-verify the user's collateral balance landed before submitting
+      // tx2 (handles the case where tx1 was confirmed at one node but
+      // hasn't propagated, or where mint signature was stripped).
+      const postSetupInfo = await connection.getAccountInfo(
+        userCollateralAta,
+        "confirmed",
+      );
+      const postBal = postSetupInfo
+        ? BigInt(AccountLayout.decode(postSetupInfo.data).amount.toString())
+        : 0n;
+      if (postBal < subsidy) {
+        throw new Error(
+          `Setup confirmed but the collateral balance is ${(Number(postBal) / 1e6).toFixed(2)} ` +
+            `(need ${(Number(subsidy) / 1e6).toFixed(2)}). ` +
+            `Likely the test mint didn't land — retry, or use a real mint with a funded ATA.`,
+        );
+      }
+
+      // tx2: market creation flow
       const tx2 = new Transaction().add(...created.instructions);
       tx2.feePayer = owner;
       tx2.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
       const signed2 = await wallet.signTransaction(tx2);
-      const sig2 = await connection.sendRawTransaction(signed2.serialize());
+      const sig2 = await connection.sendRawTransaction(signed2.serialize(), {
+        skipPreflight: false,
+      });
       await connection.confirmTransaction(sig2, "confirmed");
       sigs.push(sig2);
 
       setResult(created.market.toBase58());
     } catch (e: any) {
-      setError(e?.message ?? String(e));
+      // Surface on-chain logs when present so users see what failed.
+      const logs = e?.logs ? "\n\nLogs:\n" + (e.logs as string[]).join("\n") : "";
+      const msg = e?.message ?? String(e);
+      setError(msg + logs);
+      console.error("Create market failed:", e);
     } finally {
       setBusy(false);
     }
@@ -300,7 +348,7 @@ export default function CreatePage() {
           </div>
 
           {error && (
-            <div className="bg-loss-soft border border-loss text-xs p-3 break-all">
+            <div className="bg-loss-soft border border-loss text-xs p-3 whitespace-pre-wrap break-words font-mono">
               {error}
             </div>
           )}
