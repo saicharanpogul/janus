@@ -1,0 +1,22 @@
+[package]
+name = "janus-lmsr-math"
+description = "Q32.32 fixed-point arithmetic + exp/ln for LMSR on BPF"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[features]
+default = ["std"]
+# `std` gates the proptest harnesses + the f64 reference implementations
+# used to check bounded-error properties. On-chain code disables this.
+std = []
+
+[dependencies]
+
+[dev-dependencies]
+proptest = "1"
+
+[lints]
+workspace = true
