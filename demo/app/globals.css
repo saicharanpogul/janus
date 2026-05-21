@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --rpc: https://api.devnet.solana.com;
+}
+
+html, body {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Wallet-adapter UI override — match Bloomberg flat outline buttons */
+.wallet-adapter-button-trigger {
+  background: #000 !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  height: 38px !important;
+  border-radius: 0 !important;
+  font-size: 0.875rem !important;
+  letter-spacing: 0.02em !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  border-radius: 0 !important;
+}
+
+.wallet-adapter-button-trigger:hover {
+  background: #1a1a1a !important;
+}
+
+@layer components {
+  .table-cell {
+    @apply px-3 py-3 align-top tabular-nums;
+  }
+  .table-header {
+    @apply text-[10px] uppercase tracking-wider text-muted font-medium px-3 py-2;
+  }
+  .stat-label {
+    @apply text-[10px] uppercase tracking-wider text-muted font-medium;
+  }
+  .btn-primary {
+    @apply h-9 px-4 bg-black text-white text-sm font-semibold hover:bg-ink-soft disabled:bg-line disabled:text-muted disabled:cursor-not-allowed transition-colors;
+  }
+  .btn-outline {
+    @apply h-9 px-4 border border-line-strong text-sm font-semibold hover:bg-canvas-alt disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+  }
+  .input {
+    @apply h-9 px-3 border border-line-strong text-sm tabular-nums w-full focus:outline-none focus:border-black;
+  }
+}
