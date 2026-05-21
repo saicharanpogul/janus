@@ -14,6 +14,7 @@ state {
   yes_supply         : U64,
   no_supply          : U64,
   vault              : U64,
+  initial_collateral : U64,
 }
 
 type Error
@@ -40,6 +41,7 @@ handler initialize_market (initial_collateral : U64) {
     yes_supply         := 0
     no_supply          := 0
     vault              := 0
+    initial_collateral := initial_collateral
   }
 }
 
@@ -157,6 +159,18 @@ property vault_tracks_no :
 /// handlers require status == Active. So status only ever moves "up".
 property status_monotone :
   state.status <= 3
+  preserved_by all
+
+/// **Collateral conservation**: the sum of the user's collateral
+/// balance plus the vault always equals the amount the user deposited
+/// at initialization. Every operation moves collateral *between* the
+/// user account and the vault — split, merge, redeem_{yes,no} all
+/// transfer in opposite directions by the same amount; resolve_*
+/// don't touch balances. This is the "every unit accounted for"
+/// invariant: regardless of how many trades happen, the collateral
+/// is solvent.
+property total_collateral_conserved :
+  state.collateral_balance + state.vault == state.initial_collateral
   preserved_by all
 
 cover split_merge_roundtrip [initialize_market, split, merge]

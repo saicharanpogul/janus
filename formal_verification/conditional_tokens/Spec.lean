@@ -18,6 +18,7 @@ structure State where
   yes_supply : Nat
   no_supply : Nat
   vault : Nat
+  initial_collateral : Nat
   deriving Repr, DecidableEq, BEq
 
 instance : Inhabited State := ⟨{
@@ -27,11 +28,12 @@ instance : Inhabited State := ⟨{
   yes_supply := 0,
   no_supply := 0,
   vault := 0,
+  initial_collateral := 0,
 }⟩
 
 def initialize_marketTransition (s : State) (signer : Pubkey) (initial_collateral : Nat) : Option State :=
   if (s.initialized = 0) then
-    some { s with initialized := 1, status := 0, collateral_balance := initial_collateral, yes_supply := 0, no_supply := 0, vault := 0 }
+    some { s with initialized := 1, status := 0, collateral_balance := initial_collateral, yes_supply := 0, no_supply := 0, vault := 0, initial_collateral := initial_collateral }
   else none
 
 def splitTransition (s : State) (signer : Pubkey) (amount : Nat) : Option State :=
@@ -97,5 +99,11 @@ def vault_tracks_no (s : State) : Prop :=
 /-- Property: status_monotone. -/
 def status_monotone (s : State) : Prop :=
   s.status ≤ 3
+
+/-- Property: total_collateral_conserved.
+    `collateral_balance + vault == initial_collateral` across every
+    operation. -/
+def total_collateral_conserved (s : State) : Prop :=
+  s.collateral_balance + s.vault = s.initial_collateral
 
 end ConditionalTokens

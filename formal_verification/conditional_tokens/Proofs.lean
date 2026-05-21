@@ -448,4 +448,122 @@ theorem vault_tracks_no_preserved_by_redeem_no
     omega
   case isFalse => simp at hstep
 
+-- ----------------------------------------------------------------------
+-- total_collateral_conserved :
+--   collateral_balance + vault == initial_collateral
+--
+-- Every handler either leaves both fields untouched, or moves the same
+-- amount between them (split / merge / redeem_*). omega closes each
+-- case using the guard's `state.<x> >= amount` hypothesis to discharge
+-- the Nat subtraction.
+-- ----------------------------------------------------------------------
+
+theorem total_collateral_conserved_preserved_by_initialize_market
+    (s : State) (signer : Pubkey) (initial_collateral : Nat)
+    (_h : total_collateral_conserved s)
+    (s' : State)
+    (hstep : initialize_marketTransition s signer initial_collateral = some s') :
+    total_collateral_conserved s' := by
+  unfold initialize_marketTransition at hstep
+  split at hstep
+  case isTrue =>
+    injection hstep with hs'; subst hs'
+    -- post: collateral_balance = initial_collateral, vault = 0, initial_collateral = initial_collateral
+    -- ⇒ initial_collateral + 0 = initial_collateral.
+    simp [total_collateral_conserved]
+  case isFalse => simp at hstep
+
+theorem total_collateral_conserved_preserved_by_split
+    (s : State) (signer : Pubkey) (amount : Nat)
+    (h : total_collateral_conserved s)
+    (s' : State)
+    (hstep : splitTransition s signer amount = some s') :
+    total_collateral_conserved s' := by
+  unfold splitTransition at hstep
+  split at hstep
+  case isTrue hg =>
+    injection hstep with hs'; subst hs'
+    -- guard ensures s.collateral_balance >= amount.
+    have hcb : s.collateral_balance ≥ amount := hg.2.2.2
+    simp [total_collateral_conserved]
+    unfold total_collateral_conserved at h
+    omega
+  case isFalse => simp at hstep
+
+theorem total_collateral_conserved_preserved_by_merge
+    (s : State) (signer : Pubkey) (amount : Nat)
+    (h : total_collateral_conserved s)
+    (s' : State)
+    (hstep : mergeTransition s signer amount = some s') :
+    total_collateral_conserved s' := by
+  unfold mergeTransition at hstep
+  split at hstep
+  case isTrue hg =>
+    injection hstep with hs'; subst hs'
+    -- guard ensures s.vault >= amount.
+    have hv : s.vault ≥ amount := hg.2.2.2.2.2
+    simp [total_collateral_conserved]
+    unfold total_collateral_conserved at h
+    omega
+  case isFalse => simp at hstep
+
+theorem total_collateral_conserved_preserved_by_resolve_yes
+    (s : State) (signer : Pubkey)
+    (h : total_collateral_conserved s)
+    (s' : State)
+    (hstep : resolve_yesTransition s signer = some s') :
+    total_collateral_conserved s' := by
+  unfold resolve_yesTransition at hstep
+  split at hstep
+  case isTrue =>
+    injection hstep with hs'; subst hs'
+    -- resolve_yes only flips status; balances untouched.
+    exact h
+  case isFalse => simp at hstep
+
+theorem total_collateral_conserved_preserved_by_resolve_no
+    (s : State) (signer : Pubkey)
+    (h : total_collateral_conserved s)
+    (s' : State)
+    (hstep : resolve_noTransition s signer = some s') :
+    total_collateral_conserved s' := by
+  unfold resolve_noTransition at hstep
+  split at hstep
+  case isTrue =>
+    injection hstep with hs'; subst hs'
+    exact h
+  case isFalse => simp at hstep
+
+theorem total_collateral_conserved_preserved_by_redeem_yes
+    (s : State) (signer : Pubkey) (amount : Nat)
+    (h : total_collateral_conserved s)
+    (s' : State)
+    (hstep : redeem_yesTransition s signer amount = some s') :
+    total_collateral_conserved s' := by
+  unfold redeem_yesTransition at hstep
+  split at hstep
+  case isTrue hg =>
+    injection hstep with hs'; subst hs'
+    have hv : s.vault ≥ amount := hg.2.2.2
+    simp [total_collateral_conserved]
+    unfold total_collateral_conserved at h
+    omega
+  case isFalse => simp at hstep
+
+theorem total_collateral_conserved_preserved_by_redeem_no
+    (s : State) (signer : Pubkey) (amount : Nat)
+    (h : total_collateral_conserved s)
+    (s' : State)
+    (hstep : redeem_noTransition s signer amount = some s') :
+    total_collateral_conserved s' := by
+  unfold redeem_noTransition at hstep
+  split at hstep
+  case isTrue hg =>
+    injection hstep with hs'; subst hs'
+    have hv : s.vault ≥ amount := hg.2.2.2
+    simp [total_collateral_conserved]
+    unfold total_collateral_conserved at h
+    omega
+  case isFalse => simp at hstep
+
 end ConditionalTokens
