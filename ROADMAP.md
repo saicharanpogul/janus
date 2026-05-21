@@ -2,144 +2,133 @@
 
 Where Janus stands today and what's queued for future work. Sorted by
 distance-to-ship: the top items are concrete next moves; the bottom
-items are multi-day or research-level projects with clear entry points.
+items are multi-day research projects with clear entry points.
 
 ## Shipped (current state, `main`)
 
-- 5 Pinocchio programs: conditional-tokens, lmsr-market, slot-height-
-  resolver, pyth-price-resolver, market-factory.
+### Core primitives
+- 5 Pinocchio programs: conditional-tokens, lmsr-market (CPMM v1),
+  slot-height-resolver, pyth-price-resolver (with feed_id +
+  staleness checks + Anchor discriminator), market-factory.
 - TypeScript SDK with high-level `createMarketWithSlotResolver()` flow.
+
+### Testing
 - 14 Mollusk integration tests covering real SPL Token CPIs.
 - Localnet end-to-end test against `solana-test-validator`.
+- Devnet deploy script + canonical demo script.
+
+### Formal verification
 - 107 Kani BMC harnesses verifying transition properties.
-- 75 Lean theorems (Mathlib-enabled, all build via `lake build`),
-  including a collateral conservation theorem proven across every
-  conditional-tokens handler.
-- 5-job GitHub Actions CI (rust, kani, qedgen, lean matrix, sdk) that
-  fails on any drift.
+- 75+ Lean theorems (Mathlib-enabled, all build via `lake build`):
+  - **conditional-tokens**: 35 theorems incl. collateral conservation
+    (`vault + user_balance == initial_collateral`)
+  - **lmsr-market**: 21 (swap_no_drain, fee_bps_bounded, status_monotone)
+  - **slot-height-resolver**: 6
+  - **pyth-price-resolver**: 12
+  - **market-factory**: 1
+  - **account_layer** (multi-user Map[8] Account): 8 proven + 4 sorry'd
+    pending Aristotle pass
+- janus-lmsr-math crate: Q32.32 fixed-point arithmetic, exp/ln, full
+  LMSR cost function. 19 tests passing (15 unit + 4 proptest).
+
+### Infrastructure
+- 5-job GitHub Actions CI (rust, kani, qedgen, lean matrix x6, sdk).
 - QEDGen spec validation on every push.
 
 ## Queued (small, well-scoped)
 
 ### Devnet deploy + canonical demo
+Generate fresh program keypairs for devnet, deploy via
+`scripts/devnet/deploy.sh`, run the demo with `node
+scripts/devnet/demo.mjs`. Hooks into the existing SDK; no new on-chain
+code. **~half a day.**
 
-Generate fresh program keypairs for devnet, deploy via the `solana
-program deploy` flow already in `scripts/e2e-localnet/run.sh`, and ship
-a tiny Next.js page that lists registered markets and trades them.
-Hooks into the existing SDK; no new on-chain code. Half a day.
+### Real Pyth feed_id + staleness on devnet
+The pyth-price-resolver now validates discriminator + feed_id +
+staleness. Remaining: hook to a live Pyth feed (SOL/USD on devnet),
+write an end-to-end integration test, document the operator playbook
+for choosing `max_staleness_slots`. **~1 day.**
 
-### Real Pyth feed integration on devnet
+### Aristotle pass for outstanding sorries
+4 sorry'd theorems in account_layer (burn_yes, burn_no, two transfer
+branches) submitted to Aristotle on 2026-05-21:
 
-The pyth-price-resolver already validates the PriceUpdateV2
-discriminator. The remaining integration work is:
+  - Project: `2e3590b5-3b70-4a48-8ca2-06ed9ac47f10`
+  - Status: IN_PROGRESS
 
-1. Add `feed_id : [u8; 32]` and `max_staleness_slots : u64` fields to
-   `PythPriceResolverState`. Update the spec + Lean proofs.
-2. In `compute_outcome`, read the feed_id at offset 41 and posted_slot
-   at offset 125; reject feeds that don't match `state.feed_id` or are
-   stale.
-3. Use a real Pyth feed (e.g. SOL/USD on devnet) in an end-to-end
-   integration test.
-
-Estimated: 1 day, including spec + Lean updates.
-
-### `qedgen aristotle submit`
-
-Once `ARISTOTLE_API_KEY` is set, run
-`qedgen aristotle submit --project-dir formal_verification/<program>
---wait` per program. Harmonic's Aristotle is a heavyweight theorem
-prover that produces independent Lean proofs we can cross-check
-against ours. Diff failures = either our proof or theirs is wrong.
-
-Setup: an account at https://aristotle.harmonic.fun. Wall-clock per
-program: 15 min to several hours depending on theorem difficulty.
+Once complete, the diff against our hand-written stubs becomes the
+canonical proof. Same flow for the true-LMSR proofs once written.
+**~minutes-to-hours wall-clock** (already submitted).
 
 ## Research projects (multi-day)
 
-### Multi-user `Map[N]` state invariants
+### True LMSR: on-chain integration
 
-The current spec uses scalar state (`yes_supply : U64`) because the
-program tracks aggregate values; individual user balances live in
-external SPL Token accounts. To prove the cross-account invariant
-"sum of user YES balances equals yes_supply equals vault", we'd need
-to either:
+The math is done — `crates/lmsr-math/` ships Q32.32 + exp/ln + cost
+function with proptest harnesses showing 1e-4 relative error vs f64
+across the LMSR-relevant domain.
 
-(a) Model the SPL Token program in Lean alongside ours, then derive
-    the multi-user invariant as a corollary of SPL Token's known
-    semantics + our yes_supply/vault invariants.
-(b) Introduce a new top-level Janus spec module that abstractly models
-    "user accounts" as a `Map[N] UserBalance` field, with operations
-    parameterised by user index, and prove `Finset.sum(accounts[i]) ==
-    yes_supply` directly using Mathlib's BigOperators.
+Remaining work to ship true-LMSR as a Pinocchio program:
 
-Approach (b) is faster but creates a parallel state model that doesn't
-match the actual program; (a) is more honest but requires a substantial
-Lean library for the SPL Token program.
+1. **New `programs/lmsr-true-market/`** — Pinocchio program mirroring
+   the structure of `lmsr-market` but using `janus-lmsr-math::cost` for
+   pricing instead of CPMM. State adds a `b` (liquidity) field set at
+   pool init. Buy/sell/init handlers call `buy_yes_cost`,
+   `buy_no_cost`, `price_yes`.
 
-Entry point: start a new `crates/spl-token-model/` Lean library that
-captures `MintTo` / `Burn` / `Transfer` as state transitions over a
-`Map[N] TokenAccountBalance`, then import it into a new
-`token_conservation.qedspec` that composes with the existing
-conditional-tokens spec. Estimated 3-5 days.
+2. **CU budget verification**: build the program for SBF, write a
+   Mollusk benchmark measuring CU per cost-function call. Target:
+   < 50K CU per swap (CPMM v1 uses ~4K). If we blow past that, switch
+   exp from Taylor-9 to a precomputed lookup table.
 
-### True LMSR with fixed-point exp/ln on BPF
+3. **Spec + Lean proofs** for the bounded-loss property:
+   `∀ reachable (q_yes, q_no), C(q_yes, q_no) - b·ln(2) ≤ paid_in`.
+   This is the *real* reason to ship true LMSR — proves the subsidizer
+   can't lose more than `b·ln(2)` regardless of trader activity. Use
+   Aristotle for the heavy real-analysis lemmas
+   (`Mathlib.Analysis.SpecialFunctions.Log` over Q32.32 rationals).
 
-The current lmsr-market is CPMM with creator subsidy (commit
-b6f3b74). True LMSR — Hanson's logarithmic market scoring rule —
-needs:
+4. **Mollusk integration tests** for init / buy / sell / withdraw.
 
-```
-C(q_yes, q_no) = b * ln(exp(q_yes / b) + exp(q_no / b))
-```
+Estimated: **5–10 days** (the math crate took 1 day; the program
+integration + Lean proofs are the bulk).
 
-To implement this on BPF you need:
-1. A fixed-point arithmetic type. Q48.16 or similar — wide enough to
-   absorb the `exp` blow-up without overflow.
-2. `exp` and `ln` implementations. Options: CORDIC, Taylor series with
-   range reduction, or a precomputed lookup table. CORDIC has the
-   best CU/accuracy tradeoff but takes time to get right.
-3. CU budget analysis. Each swap needs two exp + two ln + some
-   multiplies/divides. Goal: < 50K CU per swap.
-4. New Lean proofs over `Mathlib.Analysis.SpecialFunctions.Log` to
-   capture the bounded-loss property of LMSR (max loss for the
-   subsidizer = `b * ln(2)` regardless of how many trades execute).
+Entry point: when ready, `cargo new --lib programs/lmsr-true-market`
+with `[lib] crate-type = ["cdylib", "lib"]` and `[dependencies]
+janus-lmsr-math.workspace = true`. Mirror `programs/lmsr-market/src/`
+layout.
 
-Entry point: prototype in a separate `crates/lmsr-math/` crate with
-proptest harnesses covering the fixed-point error bounds, then port
-into the program once accuracy is acceptable. Estimated 5-10 days.
+### Multi-user `Map[N]` extensions
+
+`formal_verification/account_layer/` ships the multi-user model with
+8 of 12 obligations proven. The 4 sorry'd cases (burn arithmetic +
+transfer composition) submitted to Aristotle; will fold back into the
+spec once Aristotle returns.
+
+Beyond closing the sorries, the next research extension is to **wire
+account_layer as a callee interface from conditional-tokens via the
+SPL Token program** — making the abstract multi-user invariant
+literally compose with the real CPI chain. This would let us prove
+"the entire Janus + SPL Token interaction preserves sum invariants"
+as a theorem.
 
 ### Conditional-tokens scalar markets
 
-Currently every market is binary (YES / NO). Scalar markets — bets
-where the payout is a function of the outcome rather than 0/1 — would
-extend the primitive substantially. Gnosis Conditional Tokens supports
-this via outcome partitions; we'd need to:
+Generalise the YES/NO binary primitive to N-outcome scalar markets
+(e.g., for `"SOL price at end of month"` with `[<$200, $200-300,
+$300-400, >$400]` buckets). Scope-creep flag: only worth doing if
+demand is concrete. Generalising touches every program + spec + Lean
+proof.
 
-1. Generalise the `yes_mint` / `no_mint` pair to a `Vec<outcome_mint>`
-   of arbitrary length.
-2. Add a payout vector (e.g. `[0, 25, 50, 75, 100]`) recorded at
-   resolution.
-3. Reshape the spec + Lean conservation theorems to sum across all
-   outcome supplies.
+## Distribution (when/if Janus moves past "side quest")
 
-Significant scope creep — only worth doing if there's clear demand for
-scalar markets specifically (typically prediction-market-on-numbers
-products: "SOL price at end of month").
-
-## Distribution (if you ever decide to ship)
-
-When/if Janus moves from "side quest" to "thing people use":
-
-- Mainnet program keypairs (separate from devnet); generate fresh and
-  guard authority carefully.
-- Audit pass — ideally something like Code4rena or OtterSec, focused on
-  the conditional-tokens program (highest blast radius).
-- One curated frontend launched against a small set of markets (the
-  Indian cricket / Polymarket-shape vertical from earlier
-  conversation if that's the wedge you pick).
-- A short launch post that leans on the verification depth: "175
-  mechanized proofs, formal collateral conservation theorem, full BMC
-  + Lean inductive coverage" — currently rare on Solana and a real
-  differentiator.
+- Mainnet program keypairs (separate from devnet); generate fresh
+  and guard authority carefully.
+- Audit pass — Code4rena or OtterSec, focused on conditional-tokens
+  (highest blast radius).
+- One curated frontend launched against a small set of markets.
+- Launch post leaning on the verification depth: "175+ mechanized
+  proofs, formal collateral conservation theorem, full BMC + Lean
+  inductive coverage" — currently rare on Solana, real differentiator.
 
 That's distribution, not building. Stay clearly on one side at a time.
