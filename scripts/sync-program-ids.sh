@@ -15,12 +15,14 @@ cd "$(git rev-parse --show-toplevel)"
 
 CT=$(solana-keygen pubkey target/deploy/janus_conditional_tokens-keypair.json)
 LM=$(solana-keygen pubkey target/deploy/janus_lmsr_market-keypair.json)
+LMT=$(solana-keygen pubkey target/deploy/janus_lmsr_true_market-keypair.json 2>/dev/null || echo "")
 SHR=$(solana-keygen pubkey target/deploy/janus_slot_height_resolver-keypair.json)
 PPR=$(solana-keygen pubkey target/deploy/janus_pyth_price_resolver-keypair.json)
 MF=$(solana-keygen pubkey target/deploy/janus_market_factory-keypair.json)
 
 echo "conditional-tokens:      $CT"
 echo "lmsr-market:             $LM"
+echo "lmsr-true-market:        ${LMT:-(no keypair, skipping)}"
 echo "slot-height-resolver:    $SHR"
 echo "pyth-price-resolver:     $PPR"
 echo "market-factory:          $MF"
@@ -44,6 +46,9 @@ PY
 
 update_declare_id programs/conditional-tokens/src/lib.rs   "$CT"
 update_declare_id programs/lmsr-market/src/lib.rs           "$LM"
+if [[ -n "$LMT" ]]; then
+  update_declare_id programs/lmsr-true-market/src/lib.rs    "$LMT"
+fi
 update_declare_id programs/slot-height-resolver/src/lib.rs  "$SHR"
 update_declare_id programs/pyth-price-resolver/src/lib.rs   "$PPR"
 update_declare_id programs/market-factory/src/lib.rs        "$MF"
@@ -96,10 +101,12 @@ p = "tests/src/lib.rs"
 mapping = {
     "conditional_tokens":      "$CT",
     "lmsr_market":             "$LM",
+    "lmsr_true_market":        "${LMT:-}",
     "slot_height_resolver":    "$SHR",
     "pyth_price_resolver":     "$PPR",
     "market_factory":          "$MF",
 }
+mapping = {k: v for k, v in mapping.items() if v}
 s = open(p).read()
 for name, pk in mapping.items():
     s = re.sub(

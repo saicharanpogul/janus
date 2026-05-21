@@ -13,7 +13,7 @@
 //!
 //! Returns `None` on overflow (k too large; result exceeds Q32.32 max).
 
-use crate::{Q32_32, LN2_Q, ONE};
+use crate::{Q32_32, LN2_Q};
 
 /// `exp(x)` in Q32.32. Returns `None` if the result overflows.
 ///
@@ -21,7 +21,6 @@ use crate::{Q32_32, LN2_Q, ONE};
 /// is unsigned; for LMSR we always pre-shift to keep `q_yes - q_min ≥ 0`.
 pub fn exp_q(x: Q32_32) -> Option<Q32_32> {
     // Step 1: range reduction. Find k such that x ≈ k·ln(2) + r.
-    let ln2 = Q32_32(LN2_Q);
     let k = (x.0 / LN2_Q) as u32;
     // k can't exceed ~31 before 2^k overflows the integer part. Cap early.
     if k >= 32 {

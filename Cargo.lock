@@ -1164,6 +1164,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "janus-lmsr-true-market"
+version = "0.1.0"
+dependencies = [
+ "janus-lmsr-math",
+ "pinocchio",
+ "pinocchio-pubkey",
+ "pinocchio-system",
+ "pinocchio-token",
+]
+
+[[package]]
 name = "janus-market-factory"
 version = "0.1.0"
 dependencies = [

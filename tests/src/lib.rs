@@ -19,6 +19,11 @@ pub mod ids {
             .parse()
             .unwrap()
     }
+    pub fn lmsr_true_market() -> Pubkey {
+        "HrFV8Nfncv2gekc9jZPC6rXxnVVaUQi75BmwVFzd5fjQ"
+            .parse()
+            .unwrap()
+    }
     pub fn slot_height_resolver() -> Pubkey {
         "3y75gGqFK1KhNF5k1sMy6ydnw6WLcbn1SPRoYbyRkjMj"
             .parse()
@@ -52,6 +57,7 @@ pub mod so_paths {
 
     pub const CONDITIONAL_TOKENS: &str = sbf_path!("janus_conditional_tokens");
     pub const LMSR_MARKET: &str = sbf_path!("janus_lmsr_market");
+    pub const LMSR_TRUE_MARKET: &str = sbf_path!("janus_lmsr_true_market");
     pub const SLOT_HEIGHT_RESOLVER: &str = sbf_path!("janus_slot_height_resolver");
     pub const PYTH_PRICE_RESOLVER: &str = sbf_path!("janus_pyth_price_resolver");
     pub const MARKET_FACTORY: &str = sbf_path!("janus_market_factory");

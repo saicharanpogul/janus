@@ -1,0 +1,21 @@
+[package]
+name = "janus-lmsr-true-market"
+description = "True-LMSR binary market: collateral-in, outcome-out, with Q32.32 fixed-point pricing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+pinocchio.workspace = true
+pinocchio-pubkey.workspace = true
+pinocchio-system.workspace = true
+pinocchio-token.workspace = true
+janus-lmsr-math = { path = "../../crates/lmsr-math", default-features = false }
+
+[lints]
+workspace = true
