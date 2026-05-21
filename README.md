@@ -1,6 +1,16 @@
 # Janus
 
+[![verify](https://github.com/saicharanpogul/janus/actions/workflows/verify.yml/badge.svg)](https://github.com/saicharanpogul/janus/actions/workflows/verify.yml)
+
 A permissionless binary-markets primitive for Solana, designed for tail assets.
+
+Verified end-to-end at every layer:
+- **5 Pinocchio programs** build clean for SBF
+- **14 Mollusk integration tests** exercise real SPL Token CPIs
+- **Localnet E2E** runs the SDK against `solana-test-validator`
+- **107 Kani BMC harnesses** verify spec transitions
+- **75 Lean 4 theorems** prove all preservation obligations with Mathlib
+- **Collateral conservation theorem** formally proven across every conditional-tokens handler
 
 ## What it is
 
