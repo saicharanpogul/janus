@@ -15,6 +15,7 @@ const sections = [
   { href: "/", label: "Portfolio" },
   { href: "/markets", label: "Markets" },
   { href: "/create", label: "Create" },
+  { href: "/swarm", label: "Swarm" },
 ];
 
 export function Nav() {
