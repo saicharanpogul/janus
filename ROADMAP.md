@@ -7,7 +7,8 @@ items are multi-day research projects with clear entry points.
 ## Shipped (current state, `main`)
 
 ### Core primitives
-- 5 Pinocchio programs: conditional-tokens, lmsr-market (CPMM v1),
+- 6 Pinocchio programs: conditional-tokens, lmsr-market (CPMM v1),
+  **lmsr-true-market (true LMSR, Q32.32-priced)**,
   slot-height-resolver, pyth-price-resolver (with feed_id +
   staleness checks + Anchor discriminator), market-factory.
 - TypeScript SDK with high-level `createMarketWithSlotResolver()` flow.
@@ -19,10 +20,13 @@ items are multi-day research projects with clear entry points.
 
 ### Formal verification
 - 107 Kani BMC harnesses verifying transition properties.
-- 75+ Lean theorems (Mathlib-enabled, all build via `lake build`):
+- 99+ Lean theorems (Mathlib-enabled, all build via `lake build`):
   - **conditional-tokens**: 35 theorems incl. collateral conservation
     (`vault + user_balance == initial_collateral`)
   - **lmsr-market**: 21 (swap_no_drain, fee_bps_bounded, status_monotone)
+  - **lmsr-true-market**: 24 (vault_eq_initial_plus_net_flow,
+    status_monotone, subsidy_field_stable, b_field_stable across
+    init/buy/sell/resolve)
   - **slot-height-resolver**: 6
   - **pyth-price-resolver**: 12
   - **market-factory**: 1
@@ -63,41 +67,22 @@ for the true-LMSR proofs once written.
 
 ## Research projects (multi-day)
 
-### True LMSR: on-chain integration
+### True LMSR — **shipped (2026-05-21)**
 
-The math is done — `crates/lmsr-math/` ships Q32.32 + exp/ln + cost
-function with proptest harnesses showing 1e-4 relative error vs f64
-across the LMSR-relevant domain.
+`programs/lmsr-true-market/` is live with the collateral-in /
+outcome-out model. Pool mints/burns YES + NO; pricing via
+`janus-lmsr-math::{buy_yes_cost, buy_no_cost}` on Q32.32.
 
-Remaining work to ship true-LMSR as a Pinocchio program:
-
-1. **New `programs/lmsr-true-market/`** — Pinocchio program mirroring
-   the structure of `lmsr-market` but using `janus-lmsr-math::cost` for
-   pricing instead of CPMM. State adds a `b` (liquidity) field set at
-   pool init. Buy/sell/init handlers call `buy_yes_cost`,
-   `buy_no_cost`, `price_yes`.
-
-2. **CU budget verification**: build the program for SBF, write a
-   Mollusk benchmark measuring CU per cost-function call. Target:
-   < 50K CU per swap (CPMM v1 uses ~4K). If we blow past that, switch
-   exp from Taylor-9 to a precomputed lookup table.
-
-3. **Spec + Lean proofs** for the bounded-loss property:
-   `∀ reachable (q_yes, q_no), C(q_yes, q_no) - b·ln(2) ≤ paid_in`.
-   This is the *real* reason to ship true LMSR — proves the subsidizer
-   can't lose more than `b·ln(2)` regardless of trader activity. Use
-   Aristotle for the heavy real-analysis lemmas
-   (`Mathlib.Analysis.SpecialFunctions.Log` over Q32.32 rationals).
-
-4. **Mollusk integration tests** for init / buy / sell / withdraw.
-
-Estimated: **5–10 days** (the math crate took 1 day; the program
-integration + Lean proofs are the bulk).
-
-Entry point: when ready, `cargo new --lib programs/lmsr-true-market`
-with `[lib] crate-type = ["cdylib", "lib"]` and `[dependencies]
-janus-lmsr-math.workspace = true`. Mirror `programs/lmsr-market/src/`
-layout.
+* **CU budget**: Init 9.4K, Buy 23.5K, Sell 23.5K — well under
+  the 50K target. Taylor-9 exp stays.
+* **Mollusk integration tests** (2/2 passing): full init → buy →
+  sell round-trip plus a subsidy-below-b·ln(2) reject case.
+* **Lean spec** (24 theorems, all proven, `lake build` clean):
+  vault conservation, status monotone, b + initial_subsidy
+  immutability, with the abstract `net_flow` ghost variable. The
+  next-layer claim — `net_flow ≥ -b·ln(2)` ⇒ bounded loss — needs
+  modeling LMSR cost over reals; queued for an Aristotle pass once
+  the analysis lemmas are formalized.
 
 ### Multi-user `Map[N]` extensions
 

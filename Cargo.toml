@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["programs/*", "crates/*", "tests", "formal_verification/kani-runner"]
-exclude = ["formal_verification/account_layer", "formal_verification/conditional_tokens", "formal_verification/lmsr_market", "formal_verification/market_factory", "formal_verification/pyth_price_resolver", "formal_verification/slot_height_resolver"]
+exclude = ["formal_verification/account_layer", "formal_verification/conditional_tokens", "formal_verification/lmsr_market", "formal_verification/lmsr_true_market", "formal_verification/market_factory", "formal_verification/pyth_price_resolver", "formal_verification/slot_height_resolver"]
 
 [workspace.package]
 version = "0.1.0"

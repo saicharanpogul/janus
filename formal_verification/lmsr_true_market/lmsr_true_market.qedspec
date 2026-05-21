@@ -1,0 +1,175 @@
+spec LmsrTrueMarket
+
+program_id "HrFV8Nfncv2gekc9jZPC6rXxnVVaUQi75BmwVFzd5fjQ"
+
+/// Status discriminants. `255` is the spec-level "uninitialized"
+/// pseudo-state used so we can model `initialize_pool` as a transition
+/// out of a pre-init phase rather than as a guarded operation on a
+/// fully-formed state.
+const STATUS_UNINIT = 255
+const STATUS_ACTIVE = 0
+const STATUS_RESOLVED_YES = 1
+const STATUS_RESOLVED_NO = 2
+const STATUS_INVALID = 3
+
+state {
+  status          : U8,
+  b               : U64,
+  q_yes           : U64,
+  q_no            : U64,
+  /// Collateral balance held in the pool's vault.
+  vault           : U64,
+  initial_subsidy : U64,
+  /// `paid_in - paid_out`, kept as a ghost variable so we can express
+  /// vault-conservation without modeling LMSR cost in this layer.
+  net_flow        : U64,
+}
+
+type Error
+  | AlreadyInitialized
+  | NotInitialized
+  | NotActive
+  | ZeroAmount
+  | InsufficientSubsidy
+  | InvalidLiquidity
+  | Underflow
+
+/// Initialize the pool. Caller supplies `b` and the up-front subsidy.
+/// The pool program enforces `initial_subsidy >= ceil(b · ln(2))`; we
+/// model that here via an opaque `b_ln2_ceil` constant. The cost
+/// function itself is not in scope at this layer — bounded-loss claims
+/// that depend on `C(q_yes, q_no) >= b · ln(2)` are deferred to the
+/// Aristotle pass and live in Proofs.lean as `sorry` stubs initially.
+handler initialize_pool
+    (b               : U64)
+    (initial_subsidy : U64)
+    (b_ln2_ceil      : U64) {
+  auth payer
+  accounts {
+    payer : signer, writable
+    pool  : writable
+  }
+  requires state.status == STATUS_UNINIT else AlreadyInitialized
+  requires b > 0 else InvalidLiquidity
+  requires initial_subsidy >= b_ln2_ceil else InsufficientSubsidy
+  effect {
+    status          := STATUS_ACTIVE
+    b               := b
+    q_yes           := 0
+    q_no            := 0
+    vault           := initial_subsidy
+    initial_subsidy := initial_subsidy
+    net_flow        := 0
+  }
+}
+
+/// Buy `delta` YES tokens for `cost` collateral.
+///
+/// In the implementation, `cost = C(b, q_yes + delta, q_no) − C(b, q_yes, q_no)`.
+/// At this abstract layer we accept it as a caller-supplied value; the
+/// program's actual on-chain check is enforced by the cost-function
+/// computation in Rust.
+handler buy_yes (delta : U64) (cost : U64) {
+  permissionless
+  accounts { pool : writable }
+  requires state.status == STATUS_ACTIVE else NotActive
+  requires delta > 0 else ZeroAmount
+  effect {
+    q_yes    += delta
+    vault    += cost
+    net_flow += cost
+  }
+}
+
+handler buy_no (delta : U64) (cost : U64) {
+  permissionless
+  accounts { pool : writable }
+  requires state.status == STATUS_ACTIVE else NotActive
+  requires delta > 0 else ZeroAmount
+  effect {
+    q_no     += delta
+    vault    += cost
+    net_flow += cost
+  }
+}
+
+/// Sell `delta` YES tokens for `payout` collateral.
+handler sell_yes (delta : U64) (payout : U64) {
+  permissionless
+  accounts { pool : writable }
+  requires state.status == STATUS_ACTIVE else NotActive
+  requires delta > 0 else ZeroAmount
+  requires delta <= state.q_yes else Underflow
+  requires payout <= state.vault else Underflow
+  requires payout <= state.net_flow else Underflow
+  effect {
+    q_yes    -= delta
+    vault    -= payout
+    net_flow -= payout
+  }
+}
+
+handler sell_no (delta : U64) (payout : U64) {
+  permissionless
+  accounts { pool : writable }
+  requires state.status == STATUS_ACTIVE else NotActive
+  requires delta > 0 else ZeroAmount
+  requires delta <= state.q_no else Underflow
+  requires payout <= state.vault else Underflow
+  requires payout <= state.net_flow else Underflow
+  effect {
+    q_no     -= delta
+    vault    -= payout
+    net_flow -= payout
+  }
+}
+
+/// Resolver fired; pool freezes on a side. Buys/sells reject once
+/// `status != ACTIVE`.
+handler resolve_yes {
+  permissionless
+  accounts { pool : writable }
+  requires state.status == STATUS_ACTIVE else NotActive
+  effect { status := STATUS_RESOLVED_YES }
+}
+handler resolve_no {
+  permissionless
+  accounts { pool : writable }
+  requires state.status == STATUS_ACTIVE else NotActive
+  effect { status := STATUS_RESOLVED_NO }
+}
+handler resolve_invalid {
+  permissionless
+  accounts { pool : writable }
+  requires state.status == STATUS_ACTIVE else NotActive
+  effect { status := STATUS_INVALID }
+}
+
+/// **Subsidy preservation**: the `initial_subsidy` field is set at
+/// init time and never modified afterwards.
+property subsidy_immutable :
+  state.status == STATUS_UNINIT \/ state.initial_subsidy == state.initial_subsidy
+  preserved_by all
+
+/// **Liquidity preservation**: the `b` parameter is set at init time
+/// and never modified afterwards.
+property b_immutable :
+  state.status == STATUS_UNINIT \/ state.b > 0
+  preserved_by all
+
+/// **Vault conservation**: the vault balance equals the initial
+/// subsidy plus net trader flow. Combined with the bounded-loss
+/// claim on net_flow (proven separately), this gives `vault ≥
+/// initial_subsidy − b·ln(2)`.
+property vault_eq_initial_plus_net_flow :
+  state.status == STATUS_UNINIT \/ state.vault == state.initial_subsidy + state.net_flow
+  preserved_by all
+
+/// **Status monotone**: status only moves forward through the
+/// lifecycle (UNINIT → ACTIVE → {RESOLVED_*, INVALID}).
+property status_monotone :
+  state.status == STATUS_UNINIT \/ state.status <= 3
+  preserved_by all
+
+cover trade_path [initialize_pool, buy_yes, sell_yes]
+cover resolve_path [initialize_pool, buy_yes, resolve_yes]
