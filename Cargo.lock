@@ -1180,7 +1180,10 @@ dependencies = [
  "mollusk-svm-programs-token",
  "solana-account",
  "solana-instruction",
+ "solana-program-option",
+ "solana-program-pack",
  "solana-pubkey 3.0.0",
+ "spl-token-interface",
 ]
 
 [[package]]

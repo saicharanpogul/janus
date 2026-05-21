@@ -110,6 +110,44 @@ pub mod pda {
 }
 
 // ---------------------------------------------------------------------------
+// Token fixture helpers — build SPL Token mint and account states for tests.
+// ---------------------------------------------------------------------------
+
+pub mod token_fixtures {
+    use solana_account::Account;
+    use solana_program_option::COption;
+    use solana_pubkey::Pubkey;
+    use spl_token_interface::state::{Account as TokenAccount, AccountState, Mint};
+
+    /// Construct an SPL `Mint` account owned by the SPL Token program.
+    pub fn mint_account(authority: &Pubkey, decimals: u8, supply: u64) -> Account {
+        let mint = Mint {
+            mint_authority: COption::Some(*authority),
+            supply,
+            decimals,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        mollusk_svm_programs_token::token::create_account_for_mint(mint)
+    }
+
+    /// Construct an SPL `TokenAccount` holding `amount` of `mint` for `owner`.
+    pub fn token_account(mint: &Pubkey, owner: &Pubkey, amount: u64) -> Account {
+        let token_account = TokenAccount {
+            mint: *mint,
+            owner: *owner,
+            amount,
+            delegate: COption::None,
+            state: AccountState::Initialized,
+            is_native: COption::None,
+            delegated_amount: 0,
+            close_authority: COption::None,
+        };
+        mollusk_svm_programs_token::token::create_account_for_token_account(token_account)
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Instruction builders — produce solana_sdk::instruction::Instruction values.
 // ---------------------------------------------------------------------------
 
