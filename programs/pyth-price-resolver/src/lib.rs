@@ -56,6 +56,13 @@ const PYTH_PRICE_OFFSET: usize = 73;
 const PYTH_EXPONENT_OFFSET: usize = 89;
 const PYTH_MIN_LEN: usize = 133;
 
+/// Anchor discriminator for `pyth_solana_receiver_sdk::price_update::PriceUpdateV2`.
+/// Computed as `sha256("account:PriceUpdateV2")[..8]`. Pinned here as a
+/// magic constant so we don't have to depend on the (heavyweight) Pyth
+/// receiver SDK from a no_std program. If Pyth ever versions this
+/// struct, this constant must be bumped in lockstep.
+const PRICE_UPDATE_V2_DISCRIMINATOR: [u8; 8] = [34, 241, 35, 99, 157, 126, 244, 205];
+
 /// Comparison applied to the (price, exponent) pulled from the feed
 /// against the configured (`threshold_price`, `threshold_expo`).
 #[repr(u8)]
@@ -249,7 +256,15 @@ fn compute_outcome(
 
     let feed_data = feed_ai.try_borrow_data()?;
     if feed_data.len() < PYTH_MIN_LEN {
-        // Likely not a valid PriceUpdateV2 account; the market is undecidable.
+        // Wrong length — definitely not a valid PriceUpdateV2 account.
+        return Ok(ResolutionOutcome::Invalid);
+    }
+    // Discriminator check: rejects arbitrary 133+ byte garbage and pins
+    // us to the specific `PriceUpdateV2` layout we parse. If Pyth ever
+    // upgrades the struct (e.g. PriceUpdateV3), this check fails and
+    // the market unwinds via INVALID rather than silently reading
+    // shifted bytes.
+    if feed_data[0..8] != PRICE_UPDATE_V2_DISCRIMINATOR {
         return Ok(ResolutionOutcome::Invalid);
     }
 

@@ -27,11 +27,15 @@ fn pyth_resolver_state_pda(seed_key: &Pubkey) -> (Pubkey, u8) {
 /// Synthesise a Pyth `PriceUpdateV2`-shaped account.
 ///
 /// Byte layout (must match the offsets the resolver reads at):
+///   - [0..8]    Anchor discriminator for PriceUpdateV2
 ///   - [73..81]  price (i64 LE)
 ///   - [89..93]  exponent (i32 LE)
 /// All other bytes are zero. Total length 133+ bytes.
+const PRICE_UPDATE_V2_DISCRIMINATOR: [u8; 8] = [34, 241, 35, 99, 157, 126, 244, 205];
+
 fn pyth_feed_account(owner: Pubkey, price: i64, expo: i32) -> Account {
     let mut data = vec![0u8; 200];
+    data[0..8].copy_from_slice(&PRICE_UPDATE_V2_DISCRIMINATOR);
     data[73..81].copy_from_slice(&price.to_le_bytes());
     data[89..93].copy_from_slice(&expo.to_le_bytes());
     Account {
