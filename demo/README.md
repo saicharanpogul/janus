@@ -51,12 +51,30 @@ external USDC needed.
 pnpm build && pnpm start
 ```
 
+`pnpm build` runs a `prebuild` step that first builds `../sdk` (since
+`sdk/dist/` is git-ignored), then `next build`.
+
 To switch to a different RPC (Helius, Triton, your own), set
 `NEXT_PUBLIC_RPC` before building:
 
 ```bash
 NEXT_PUBLIC_RPC=https://mainnet.helius-rpc.com/?api-key=... pnpm build
 ```
+
+## Deploy to Vercel
+
+```bash
+vercel --cwd demo
+```
+
+The bundled `demo/vercel.json` overrides Vercel's install step to
+build the sibling SDK first (`cd ../sdk && pnpm install && pnpm
+build`) before installing the demo. Without this, the demo's
+`file:../sdk` dependency resolves to a directory missing its
+compiled `dist/`, and Next.js fails on the `@janus/sdk` import.
+
+If you set Vercel's "Root Directory" in the project settings, point
+it at `demo` so the bundled `vercel.json` is picked up.
 
 For mainnet, also update the program IDs in
 `../sdk/src/constants.ts` and rebuild the SDK (`cd ../sdk && pnpm build`).
