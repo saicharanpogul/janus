@@ -103,6 +103,20 @@ pub mod pda {
         Pubkey::find_program_address(&[b"no-vault", pool.as_ref()], &ids::lmsr_market())
     }
 
+    // True-LMSR (lmsr-true-market) PDAs.
+    pub fn true_pool(resolver_state: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(
+            &[b"pool", resolver_state.as_ref()],
+            &ids::lmsr_true_market(),
+        )
+    }
+    pub fn true_collateral_vault(pool: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(
+            &[b"coll-vault", pool.as_ref()],
+            &ids::lmsr_true_market(),
+        )
+    }
+
     pub fn slot_resolver_state(seed_key: &Pubkey) -> (Pubkey, u8) {
         Pubkey::find_program_address(
             &[b"slot-resolver", seed_key.as_ref()],
