@@ -52,8 +52,10 @@ pinocchio_pubkey::declare_id!("3WDargKHd1UaP9UKPhJY8pF5bv5zJnaFAYDA9uahs5aL");
 const INSTRUCTION_INITIALIZE: u8 = 1;
 
 // Pyth PriceUpdateV2 byte offsets (see module-level comment).
+const PYTH_FEED_ID_OFFSET: usize = 41;
 const PYTH_PRICE_OFFSET: usize = 73;
 const PYTH_EXPONENT_OFFSET: usize = 89;
+const PYTH_POSTED_SLOT_OFFSET: usize = 125;
 const PYTH_MIN_LEN: usize = 133;
 
 /// Anchor discriminator for `pyth_solana_receiver_sdk::price_update::PriceUpdateV2`.
@@ -85,7 +87,14 @@ impl TryFrom<u8> for Comparison {
     }
 }
 
-/// 104-byte resolver-state account.
+/// 136-byte resolver-state account.
+///
+/// `price_feed` is the address of the Pyth `PriceUpdateV2` account we
+/// read from. `feed_id` is the 32-byte feed identifier stored inside
+/// that account (Pyth's canonical identifier for a price stream) —
+/// we validate both to defend against an attacker swapping in a
+/// different feed at the same address. `max_staleness_slots` rejects
+/// price data that's older than the configured threshold.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PythPriceResolverState {
@@ -94,7 +103,9 @@ pub struct PythPriceResolverState {
     pub _padding: [u8; 6],
     pub authority: Pubkey,
     pub price_feed: Pubkey,
+    pub feed_id: [u8; 32],
     pub earliest_slot: u64,
+    pub max_staleness_slots: u64,
     pub threshold_price: i64,
     pub threshold_expo: i32,
     pub _padding2: [u8; 4],
@@ -119,7 +130,9 @@ impl PythPriceResolverState {
     }
 }
 
-const _: () = assert!(PythPriceResolverState::LEN == 96);
+// 1 + 1 + 6 + 32*3 + 8*2 + 8 + 4 + 4 = 136. The +32 over the previous
+// 96-byte version is `feed_id`; +8 is `max_staleness_slots`.
+const _: () = assert!(PythPriceResolverState::LEN == 136);
 
 pub fn process_instruction(
     program_id: &Pubkey,
@@ -145,23 +158,34 @@ pub fn process_instruction(
 ///   2. `[signer]`           authority
 ///   3. `[readonly]`         system program
 ///
-/// Data: `[bump:u8, comparison:u8, pad:6, price_feed:32, earliest_slot:u64,
-///         threshold_price:i64, threshold_expo:i32, pad:4, seed_key:32]`
+/// Data layout (168 bytes = state minus dynamic seed_key, plus seed_key):
+///   [0]     bump : u8
+///   [1]     comparison : u8
+///   [2..8]  padding
+///   [8..40] price_feed : Pubkey
+///   [40..72] feed_id : [u8; 32]
+///   [72..80] earliest_slot : u64
+///   [80..88] max_staleness_slots : u64
+///   [88..96] threshold_price : i64
+///   [96..100] threshold_expo : i32
+///   [100..104] padding
+///   [104..136] seed_key : [u8; 32]
 fn process_initialize(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
-    if data.len() != PythPriceResolverState::LEN - 32 + 32 {
+    if data.len() != 136 {
         return Err(ProgramError::InvalidInstructionData);
     }
 
     let bump = data[0];
     let comparison = data[1];
-    // bytes [2..8] padding
     let mut price_feed = [0u8; 32];
     price_feed.copy_from_slice(&data[8..40]);
-    let earliest_slot = u64::from_le_bytes(data[40..48].try_into().unwrap());
-    let threshold_price = i64::from_le_bytes(data[48..56].try_into().unwrap());
-    let threshold_expo = i32::from_le_bytes(data[56..60].try_into().unwrap());
-    // bytes [60..64] padding
-    let seed_key: &[u8] = &data[64..96];
+    let mut feed_id = [0u8; 32];
+    feed_id.copy_from_slice(&data[40..72]);
+    let earliest_slot = u64::from_le_bytes(data[72..80].try_into().unwrap());
+    let max_staleness_slots = u64::from_le_bytes(data[80..88].try_into().unwrap());
+    let threshold_price = i64::from_le_bytes(data[88..96].try_into().unwrap());
+    let threshold_expo = i32::from_le_bytes(data[96..100].try_into().unwrap());
+    let seed_key: &[u8] = &data[104..136];
 
     // Sanity: parse comparison so an invalid byte is rejected up-front.
     let _ = Comparison::try_from(comparison)?;
@@ -211,7 +235,9 @@ fn process_initialize(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
         s._padding = [0; 6];
         s.authority = *authority_ai.key();
         s.price_feed = price_feed;
+        s.feed_id = feed_id;
         s.earliest_slot = earliest_slot;
+        s.max_staleness_slots = max_staleness_slots;
         s.threshold_price = threshold_price;
         s.threshold_expo = threshold_expo;
         s._padding2 = [0; 4];
@@ -265,6 +291,23 @@ fn compute_outcome(
     // the market unwinds via INVALID rather than silently reading
     // shifted bytes.
     if feed_data[0..8] != PRICE_UPDATE_V2_DISCRIMINATOR {
+        return Ok(ResolutionOutcome::Invalid);
+    }
+    // Feed-ID check: defends against an attacker swapping the account
+    // *contents* at our configured `price_feed` address with a
+    // different feed's data. The 32-byte feed_id is the canonical
+    // identifier Pyth assigns to a price stream.
+    if feed_data[PYTH_FEED_ID_OFFSET..PYTH_FEED_ID_OFFSET + 32] != state.feed_id {
+        return Ok(ResolutionOutcome::Invalid);
+    }
+    // Staleness check: rejects feeds where the posted_slot is too far
+    // behind the current clock. Markets bound to a stale feed unwind.
+    let posted_slot = u64::from_le_bytes(
+        feed_data[PYTH_POSTED_SLOT_OFFSET..PYTH_POSTED_SLOT_OFFSET + 8]
+            .try_into()
+            .unwrap(),
+    );
+    if clock.slot.saturating_sub(posted_slot) > state.max_staleness_slots {
         return Ok(ResolutionOutcome::Invalid);
     }
 

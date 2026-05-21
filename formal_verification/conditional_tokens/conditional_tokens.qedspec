@@ -25,6 +25,7 @@ type Error
   | MarketNotResolvedNo
   | InsufficientCollateral
   | InsufficientOutcomeTokens
+  | MathOverflow
 
 /// Initialize a fresh market — status starts Active, supplies and vault zero.
 handler initialize_market (initial_collateral : U64) {
