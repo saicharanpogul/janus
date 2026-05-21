@@ -1,0 +1,149 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ---- Rust: cargo check + Mollusk integration tests ----
+  rust:
+    name: cargo check + Mollusk integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-tests
+
+      - name: Install Solana toolchain (for cargo-build-sbf)
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v2.2.20/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: cargo check workspace
+        run: cargo check --workspace
+
+      - name: cargo build-sbf (all 5 programs)
+        run: cargo build-sbf
+
+      - name: Mollusk integration tests
+        run: cargo test -p janus-tests
+
+  # ---- Kani: bounded model checking on the spec model ----
+  kani:
+    name: Kani BMC harnesses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-kani
+
+      - name: Install cargo-kani
+        run: |
+          cargo install --locked kani-verifier
+          cargo kani setup
+
+      - name: Run all 107 Kani harnesses
+        run: cargo kani -p janus-kani-runner --tests
+
+  # ---- qedgen check: spec validation ----
+  qedgen:
+    name: qedgen check (spec lint + coverage)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: qedgen
+
+      - name: Install qedgen
+        run: cargo install qedgen-solana-skills --locked
+
+      - name: Validate every .qedspec
+        run: |
+          for spec in formal_verification/*/*.qedspec; do
+            echo "=== $spec ==="
+            qedgen check --spec "$spec"
+          done
+
+  # ---- Lean: build Spec.lean + Proofs.lean per program ----
+  lean:
+    name: Lean proofs (lake build)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        program:
+          - conditional_tokens
+          - lmsr_market
+          - market_factory
+          - pyth_price_resolver
+          - slot_height_resolver
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan (Lean version manager)
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Mathlib build artefacts
+        uses: actions/cache@v4
+        with:
+          path: formal_verification/${{ matrix.program }}/.lake
+          key: lake-${{ matrix.program }}-v4.30.0-rc2-${{ hashFiles(format('formal_verification/{0}/lakefile.lean', matrix.program), format('formal_verification/{0}/lean-toolchain', matrix.program)) }}
+          restore-keys: |
+            lake-${{ matrix.program }}-v4.30.0-rc2-
+
+      - name: lake update + build (uses Mathlib cache)
+        working-directory: formal_verification/${{ matrix.program }}
+        run: |
+          lake update
+          lake build
+
+  # ---- SDK: TypeScript typecheck + build ----
+  sdk:
+    name: SDK typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+
+      - name: pnpm install
+        working-directory: sdk
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm typecheck
+        working-directory: sdk
+        run: pnpm typecheck
+
+      - name: pnpm build
+        working-directory: sdk
+        run: pnpm build
