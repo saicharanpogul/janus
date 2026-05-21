@@ -11,4 +11,4 @@ require mathlib from git
 
 @[default_target]
 lean_lib Janus_lmsr_true_marketSpec where
-  roots := #[`Spec, `Proofs]
+  roots := #[`Spec, `Proofs, `LmsrCost]

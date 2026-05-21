@@ -40,6 +40,7 @@ deploy_one() {
 
 deploy_one janus_conditional_tokens
 deploy_one janus_lmsr_market
+deploy_one janus_lmsr_true_market
 deploy_one janus_slot_height_resolver
 deploy_one janus_pyth_price_resolver
 deploy_one janus_market_factory

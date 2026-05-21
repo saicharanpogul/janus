@@ -42,28 +42,30 @@ items are multi-day research projects with clear entry points.
 
 ## Queued (small, well-scoped)
 
-### Devnet deploy + canonical demo
-Generate fresh program keypairs for devnet, deploy via
-`scripts/devnet/deploy.sh`, run the demo with `node
-scripts/devnet/demo.mjs`. Hooks into the existing SDK; no new on-chain
-code. **~half a day.**
+### Devnet deploy + canonical demo — **done (2026-05-21)**
+All 6 programs deployed to devnet (see [DEVNET.md](DEVNET.md) for IDs
+and operator playbook). Canonical demo market live at
+`6W98N95Rko8jgMobawWtWQnrRNEfCjKvuRUV9RxxFQdv`. Cost: ~0.94 SOL for
+the deploy.
 
-### Real Pyth feed_id + staleness on devnet
-The pyth-price-resolver now validates discriminator + feed_id +
-staleness. Remaining: hook to a live Pyth feed (SOL/USD on devnet),
-write an end-to-end integration test, document the operator playbook
-for choosing `max_staleness_slots`. **~1 day.**
+### Real Pyth feed_id + staleness on devnet — **done (2026-05-21)**
+The `scripts/devnet/pyth-verify.mjs` script fetches a `PriceUpdateV2`
+account and confirms our hard-coded byte offsets (feed_id @ 41, price
+@ 73, exponent @ 89, posted_slot @ 125) parse the on-chain layout
+exactly. Operator playbook + `max_staleness_slots` guidance in
+[DEVNET.md](DEVNET.md). Posting a fresh feed account requires the
+`@pythnetwork/pyth-solana-receiver` SDK as documented there.
 
-### Aristotle pass for outstanding sorries — **done**
-4 sorry'd theorems in account_layer (burn_yes, burn_no, two transfer
-branches) submitted to Aristotle on 2026-05-21 (project
-`2e3590b5-3b70-4a48-8ca2-06ed9ac47f10`); proofs landed the same day.
-Tactic mix: `sum_update_proj_bilinear` + `lia` for burn arithmetic;
-`grind` (and `grind +splitImp`) for the transfer same-index branches;
-two bilinear applications + `grind` for the distinct-index transfer
-branches. account_layer now 12/12 proven, depending only on standard
-axioms (propext, Classical.choice, Quot.sound). Same flow available
-for the true-LMSR proofs once written.
+### Aristotle passes
+* **account_layer** (2026-05-21, project `2e3590b5-...`): 4 sorry'd
+  burn/transfer theorems closed via `sum_update_proj_bilinear` + `lia`
+  / `grind`. 12/12 proven.
+* **lmsr-true-market bounded-loss** (2026-05-21, project
+  `0c1e9d43-cfd1-4f9f-94c8-ee303eafbf6e`, IN_PROGRESS): real-valued
+  LMSR cost formalization in `LmsrCost.lean` with 3 sorry'd lemmas
+  (cost_lower_bound, cost_monotone_yes, cost_monotone_no). The
+  headline `bounded_loss` theorem closes once these monotonicities
+  land.
 
 ## Research projects (multi-day)
 
@@ -101,8 +103,8 @@ as a theorem.
 Generalise the YES/NO binary primitive to N-outcome scalar markets
 (e.g., for `"SOL price at end of month"` with `[<$200, $200-300,
 $300-400, >$400]` buckets). Scope-creep flag: only worth doing if
-demand is concrete. Generalising touches every program + spec + Lean
-proof.
+demand is concrete. Full design path in
+[SCALAR_MARKETS_DESIGN.md](SCALAR_MARKETS_DESIGN.md).
 
 ## Distribution (when/if Janus moves past "side quest")
 
