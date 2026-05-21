@@ -36,7 +36,7 @@ entrypoint!(process_instruction);
 nostd_panic_handler!();
 
 // Placeholder program ID — replace before deployment with a real keypair.
-pinocchio_pubkey::declare_id!("61MLdp3QZMZ8knfBtZvi7CGhB2SgX1Usq6wVaL89SHD1");
+pinocchio_pubkey::declare_id!("GUwcYfYGqR6WPduoB6gEEZoPG6vdAAK7gK1xP6eTJ3JK");
 
 pub fn process_instruction(
     program_id: &Pubkey,

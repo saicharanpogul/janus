@@ -22,7 +22,7 @@ use crate::{
 /// WithdrawPoolTokens call. Must stay in sync with that crate's
 /// `declare_id!`.
 const CONDITIONAL_TOKENS_ID: Pubkey =
-    pinocchio_pubkey::pubkey!("61MLdp3EEExnhh6W9BYT8Jj52ZoXYoQn6PHKmxtrsc7y");
+    pinocchio_pubkey::pubkey!("SH9ghSowHqqWR5YcXVtmkXjt8is1qERCmxHXEvf5sw1");
 
 /// Byte offset of `Market::status` inside the conditional-tokens market
 /// account (immediately after `bump: u8`).

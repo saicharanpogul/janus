@@ -27,7 +27,7 @@ nostd_panic_handler!();
 // Placeholder program ID — replace before deployment by running
 // `solana-keygen new -o target/deploy/janus_conditional_tokens-keypair.json`
 // and pasting the resulting pubkey here.
-pinocchio_pubkey::declare_id!("61MLdp3EEExnhh6W9BYT8Jj52ZoXYoQn6PHKmxtrsc7y");
+pinocchio_pubkey::declare_id!("SH9ghSowHqqWR5YcXVtmkXjt8is1qERCmxHXEvf5sw1");
 
 pub fn process_instruction(
     program_id: &Pubkey,

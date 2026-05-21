@@ -6,23 +6,23 @@ import { PublicKey } from "@solana/web3.js";
 // in sync when you generate real keypairs with `solana-keygen new`.
 
 export const CONDITIONAL_TOKENS_PROGRAM_ID = new PublicKey(
-  "61MLdp3EEExnhh6W9BYT8Jj52ZoXYoQn6PHKmxtrsc7y",
+  "SH9ghSowHqqWR5YcXVtmkXjt8is1qERCmxHXEvf5sw1",
 );
 
 export const LMSR_MARKET_PROGRAM_ID = new PublicKey(
-  "61MLdp3QZMZ8knfBtZvi7CGhB2SgX1Usq6wVaL89SHD1",
+  "GUwcYfYGqR6WPduoB6gEEZoPG6vdAAK7gK1xP6eTJ3JK",
 );
 
 export const SLOT_HEIGHT_RESOLVER_PROGRAM_ID = new PublicKey(
-  "61MLdp3RWCNin5N3CPGTdCHoSA4EyZYLqegkaDus9nFZ",
+  "3y75gGqFK1KhNF5k1sMy6ydnw6WLcbn1SPRoYbyRkjMj",
 );
 
 export const PYTH_PRICE_RESOLVER_PROGRAM_ID = new PublicKey(
-  "61MLdp3R75WtTNjW4MfvbCDU43uAB2uUNZhD53kX9hyq",
+  "3WDargKHd1UaP9UKPhJY8pF5bv5zJnaFAYDA9uahs5aL",
 );
 
 export const MARKET_FACTORY_PROGRAM_ID = new PublicKey(
-  "61MLdp3PjxAhoiPRbx2kJqoq4cri8vB5FovmHYq7AKuh",
+  "8ibKxXAWsdqyNG1wExRSvLhKBgXiPpqtE6ZkA277gPwC",
 );
 
 // ---- PDA seed constants (must match Rust) ----

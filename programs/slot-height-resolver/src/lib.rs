@@ -28,7 +28,7 @@ nostd_panic_handler!();
 
 // Placeholder program ID — replace before deployment by running
 // `solana-keygen new` and pasting the resulting pubkey here.
-pinocchio_pubkey::declare_id!("61MLdp3RWCNin5N3CPGTdCHoSA4EyZYLqegkaDus9nFZ");
+pinocchio_pubkey::declare_id!("3y75gGqFK1KhNF5k1sMy6ydnw6WLcbn1SPRoYbyRkjMj");
 
 const INSTRUCTION_INITIALIZE: u8 = 1;
 

@@ -32,17 +32,17 @@ entrypoint!(process_instruction);
 nostd_panic_handler!();
 
 // Placeholder program ID — replace before deployment.
-pinocchio_pubkey::declare_id!("61MLdp3PjxAhoiPRbx2kJqoq4cri8vB5FovmHYq7AKuh");
+pinocchio_pubkey::declare_id!("8ibKxXAWsdqyNG1wExRSvLhKBgXiPpqtE6ZkA277gPwC");
 
 /// Conditional-tokens program ID (must be kept in sync with that crate's
 /// `declare_id!`). Used to verify the market account ownership.
 const CONDITIONAL_TOKENS_ID: Pubkey =
-    pinocchio_pubkey::pubkey!("61MLdp3EEExnhh6W9BYT8Jj52ZoXYoQn6PHKmxtrsc7y");
+    pinocchio_pubkey::pubkey!("SH9ghSowHqqWR5YcXVtmkXjt8is1qERCmxHXEvf5sw1");
 
 /// LMSR-market program ID (kept in sync with that crate). Used to verify
 /// the pool account ownership.
 const LMSR_MARKET_ID: Pubkey =
-    pinocchio_pubkey::pubkey!("61MLdp3QZMZ8knfBtZvi7CGhB2SgX1Usq6wVaL89SHD1");
+    pinocchio_pubkey::pubkey!("GUwcYfYGqR6WPduoB6gEEZoPG6vdAAK7gK1xP6eTJ3JK");
 
 // ---- Byte offsets into the Market account (conditional-tokens) ----
 // These mirror `janus_conditional_tokens::state::Market`. Duplicated here

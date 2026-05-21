@@ -10,27 +10,27 @@ pub mod ids {
     use solana_pubkey::Pubkey;
 
     pub fn conditional_tokens() -> Pubkey {
-        "61MLdp3EEExnhh6W9BYT8Jj52ZoXYoQn6PHKmxtrsc7y"
+        "SH9ghSowHqqWR5YcXVtmkXjt8is1qERCmxHXEvf5sw1"
             .parse()
             .unwrap()
     }
     pub fn lmsr_market() -> Pubkey {
-        "61MLdp3QZMZ8knfBtZvi7CGhB2SgX1Usq6wVaL89SHD1"
+        "GUwcYfYGqR6WPduoB6gEEZoPG6vdAAK7gK1xP6eTJ3JK"
             .parse()
             .unwrap()
     }
     pub fn slot_height_resolver() -> Pubkey {
-        "61MLdp3RWCNin5N3CPGTdCHoSA4EyZYLqegkaDus9nFZ"
+        "3y75gGqFK1KhNF5k1sMy6ydnw6WLcbn1SPRoYbyRkjMj"
             .parse()
             .unwrap()
     }
     pub fn pyth_price_resolver() -> Pubkey {
-        "61MLdp3R75WtTNjW4MfvbCDU43uAB2uUNZhD53kX9hyq"
+        "3WDargKHd1UaP9UKPhJY8pF5bv5zJnaFAYDA9uahs5aL"
             .parse()
             .unwrap()
     }
     pub fn market_factory() -> Pubkey {
-        "61MLdp3PjxAhoiPRbx2kJqoq4cri8vB5FovmHYq7AKuh"
+        "8ibKxXAWsdqyNG1wExRSvLhKBgXiPpqtE6ZkA277gPwC"
             .parse()
             .unwrap()
     }
