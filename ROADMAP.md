@@ -26,8 +26,9 @@ items are multi-day research projects with clear entry points.
   - **slot-height-resolver**: 6
   - **pyth-price-resolver**: 12
   - **market-factory**: 1
-  - **account_layer** (multi-user Map[8] Account): 8 proven + 4 sorry'd
-    pending Aristotle pass
+  - **account_layer** (multi-user Map[8] Account): 12/12 proven
+    (Aristotle filled the 4 burn/transfer sorries on 2026-05-21,
+    no non-standard axioms)
 - janus-lmsr-math crate: Q32.32 fixed-point arithmetic, exp/ln, full
   LMSR cost function. 19 tests passing (15 unit + 4 proptest).
 
@@ -49,16 +50,16 @@ staleness. Remaining: hook to a live Pyth feed (SOL/USD on devnet),
 write an end-to-end integration test, document the operator playbook
 for choosing `max_staleness_slots`. **~1 day.**
 
-### Aristotle pass for outstanding sorries
+### Aristotle pass for outstanding sorries — **done**
 4 sorry'd theorems in account_layer (burn_yes, burn_no, two transfer
-branches) submitted to Aristotle on 2026-05-21:
-
-  - Project: `2e3590b5-3b70-4a48-8ca2-06ed9ac47f10`
-  - Status: IN_PROGRESS
-
-Once complete, the diff against our hand-written stubs becomes the
-canonical proof. Same flow for the true-LMSR proofs once written.
-**~minutes-to-hours wall-clock** (already submitted).
+branches) submitted to Aristotle on 2026-05-21 (project
+`2e3590b5-3b70-4a48-8ca2-06ed9ac47f10`); proofs landed the same day.
+Tactic mix: `sum_update_proj_bilinear` + `lia` for burn arithmetic;
+`grind` (and `grind +splitImp`) for the transfer same-index branches;
+two bilinear applications + `grind` for the distinct-index transfer
+branches. account_layer now 12/12 proven, depending only on standard
+axioms (propext, Classical.choice, Quot.sound). Same flow available
+for the true-LMSR proofs once written.
 
 ## Research projects (multi-day)
 
@@ -101,9 +102,7 @@ layout.
 ### Multi-user `Map[N]` extensions
 
 `formal_verification/account_layer/` ships the multi-user model with
-8 of 12 obligations proven. The 4 sorry'd cases (burn arithmetic +
-transfer composition) submitted to Aristotle; will fold back into the
-spec once Aristotle returns.
+all 12 obligations proven (Aristotle closed the last 4 on 2026-05-21).
 
 Beyond closing the sorries, the next research extension is to **wire
 account_layer as a callee interface from conditional-tokens via the

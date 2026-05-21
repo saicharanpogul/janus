@@ -87,7 +87,10 @@ theorem yes_supply_matches_sum_preserved_by_burn_yes
     -- omega/linarith trip on the alpha-equivalence of two ∑ expressions
     -- across the rewrite. Fix: rewrite key in stages with explicit
     -- Finset.sum_update_of_mem from Mathlib. Leaving as sorry for now.
-    sorry
+    have h_sum : (∑ j, (Function.update s.accounts i { yes_balance := (s.accounts i).yes_balance - amount, no_balance := (s.accounts i).no_balance } j).yes_balance) + (s.accounts i).yes_balance = (∑ j, (s.accounts j).yes_balance) + ((s.accounts i).yes_balance - amount) :=
+      sum_update_proj_bilinear s.accounts i
+        { yes_balance := (s.accounts i).yes_balance - amount, no_balance := (s.accounts i).no_balance } Account.yes_balance
+    lia
   case isFalse => simp at hstep
 
 theorem yes_supply_matches_sum_preserved_by_burn_no
@@ -130,7 +133,7 @@ theorem yes_supply_matches_sum_preserved_by_transfer_yes
       subst heq
       -- TODO: same-index branch — sum invariant under no-op composed
       -- update. Held up by the same sum-update normalization issue.
-      sorry
+      grind
     · -- Distinct indices: from loses, to gains; deltas cancel.
       have key_from := sum_update_proj_bilinear (β := Account) (γ := Nat)
         s.accounts from_idx
@@ -149,7 +152,7 @@ theorem yes_supply_matches_sum_preserved_by_transfer_yes
             to_idx).yes_balance + amount }
         (fun a => a.yes_balance)
       -- TODO: two bilinear applications cancel; same omega-on-sums issue.
-      sorry
+      grind
   case isFalse => simp at hstep
 
 theorem yes_supply_matches_sum_preserved_by_transfer_no
@@ -243,7 +246,8 @@ theorem no_supply_matches_sum_preserved_by_burn_no
     simp only [Map.set]
     -- TODO: same as burn_yes_preserved_by — finite-sum + Nat-sub omega
     -- normalization issue. Resolution path identical.
-    sorry
+    have := sum_update_proj_bilinear s.accounts i ( { yes_balance := ( s.accounts i ).yes_balance, no_balance := ( s.accounts i ).no_balance - amount } ) ( fun x => x.no_balance );
+    grind
   case isFalse => simp at hstep
 
 theorem no_supply_matches_sum_preserved_by_burn_yes
@@ -283,7 +287,7 @@ theorem no_supply_matches_sum_preserved_by_transfer_no
     simp only [Map.set]
     by_cases heq : from_idx = to_idx
     · subst heq
-      sorry
+      grind +splitImp
     · have key_from := sum_update_proj_bilinear (β := Account) (γ := Nat)
         s.accounts from_idx
         { (s.accounts from_idx) with no_balance := (s.accounts from_idx).no_balance - amount }
@@ -301,7 +305,7 @@ theorem no_supply_matches_sum_preserved_by_transfer_no
             to_idx).no_balance + amount }
         (fun a => a.no_balance)
       -- TODO: two bilinear applications cancel; same omega-on-sums issue.
-      sorry
+      grind
   case isFalse => simp at hstep
 
 theorem no_supply_matches_sum_preserved_by_transfer_yes

@@ -61,6 +61,7 @@ def findByKey (p_accounts : List Account) (p_key : Pubkey) : Option Account :=
 def findByAuthority (p_accounts : List Account) (p_authority : Pubkey) : Option Account :=
   p_accounts.find? (fun acc => acc.authority = p_authority)
 
+/- Axioms commented out to allow proof verification without non-standard axioms.
 -- Find in mapped list: if mapping preserves the predicate's relevant fields
 -- Using axiom for now - full proof would require more complex induction
 axiom find_map_pred_preserved
@@ -115,6 +116,7 @@ axiom find_by_key_map_update_same
     let updated := p_accounts.map (fun acc =>
       if acc.key = p_key then p_f acc else acc)
     findByKey updated p_key = some (p_f p_original)
+-/
 
 end QEDGen.Solana.Account
 
@@ -129,10 +131,12 @@ abbrev Account := QEDGen.Solana.Account.Account
 abbrev canWrite := QEDGen.Solana.Account.canWrite
 abbrev findByKey := QEDGen.Solana.Account.findByKey
 abbrev findByAuthority := QEDGen.Solana.Account.findByAuthority
+/- Commented out along with the axioms above
 abbrev find_map_pred_preserved := QEDGen.Solana.Account.find_map_pred_preserved
 abbrev find_map_update_other := QEDGen.Solana.Account.find_map_update_other
 abbrev find_map_update_same := QEDGen.Solana.Account.find_map_update_same
 abbrev find_by_key_map_update_other := QEDGen.Solana.Account.find_by_key_map_update_other
 abbrev find_by_key_map_update_same := QEDGen.Solana.Account.find_by_key_map_update_same
+-/
 
 end QEDGen.Solana
