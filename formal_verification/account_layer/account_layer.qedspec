@@ -1,0 +1,114 @@
+spec AccountLayer
+
+// Models the multi-user state that lives in external SPL Token accounts
+// when many users hold YES/NO outcome tokens. Operations mirror SPL
+// Token: MintTo (split), Burn (merge / redeem), Transfer (token transfer
+// or AMM swap movement). The core invariant is conservation:
+//
+//   total_yes_supply == sum over all i of accounts[i].yes_balance
+//
+// This is what the SPL Token program enforces at the protocol level —
+// formalized here so Janus can compose against it knowing the
+// underlying property is mechanized.
+
+const MAX_ACCOUNTS = 8
+
+type AccountIdx = Fin[MAX_ACCOUNTS]
+
+type Account = {
+  yes_balance : U64,
+  no_balance  : U64,
+}
+
+state {
+  total_yes_supply : U64,
+  total_no_supply  : U64,
+  accounts         : Map[MAX_ACCOUNTS] Account,
+}
+
+type Error
+  | InvalidIndex
+  | InsufficientBalance
+  | InsufficientSupply
+  | MathOverflow
+
+/// Mint `amount` of YES to user `i`. Increases both the user's balance
+/// and the total supply.
+handler mint_yes (i : AccountIdx) (amount : U64) {
+  permissionless
+  effect {
+    accounts[i].yes_balance += amount
+    total_yes_supply        += amount
+  }
+}
+
+handler mint_no (i : AccountIdx) (amount : U64) {
+  permissionless
+  effect {
+    accounts[i].no_balance += amount
+    total_no_supply        += amount
+  }
+}
+
+/// Burn `amount` of YES from user `i`. Decreases both the user's
+/// balance and the total supply.
+handler burn_yes (i : AccountIdx) (amount : U64) {
+  permissionless
+  requires state.accounts[i].yes_balance >= amount else InsufficientBalance
+  requires state.total_yes_supply >= amount else InsufficientSupply
+  effect {
+    accounts[i].yes_balance -= amount
+    total_yes_supply        -= amount
+  }
+}
+
+handler burn_no (i : AccountIdx) (amount : U64) {
+  permissionless
+  requires state.accounts[i].no_balance >= amount else InsufficientBalance
+  requires state.total_no_supply >= amount else InsufficientSupply
+  effect {
+    accounts[i].no_balance -= amount
+    total_no_supply        -= amount
+  }
+}
+
+/// Transfer `amount` YES from user `from` to user `to`. Sum across all
+/// users is unchanged.
+handler transfer_yes
+    (from_idx : AccountIdx)
+    (to_idx   : AccountIdx)
+    (amount   : U64) {
+  permissionless
+  requires state.accounts[from_idx].yes_balance >= amount else InsufficientBalance
+  effect {
+    accounts[from_idx].yes_balance -= amount
+    accounts[to_idx].yes_balance   += amount
+  }
+}
+
+handler transfer_no
+    (from_idx : AccountIdx)
+    (to_idx   : AccountIdx)
+    (amount   : U64) {
+  permissionless
+  requires state.accounts[from_idx].no_balance >= amount else InsufficientBalance
+  effect {
+    accounts[from_idx].no_balance -= amount
+    accounts[to_idx].no_balance   += amount
+  }
+}
+
+/// **Conservation of YES supply**: the total YES supply equals the sum
+/// of all users' YES balances. Every operation either updates the
+/// total and one user in lockstep (mint / burn) or moves a delta
+/// between two users (transfer) — both preserve the sum invariant.
+property yes_supply_matches_sum :
+  state.total_yes_supply == sum i : AccountIdx, state.accounts[i].yes_balance
+  preserved_by all
+
+/// **Conservation of NO supply** (symmetric).
+property no_supply_matches_sum :
+  state.total_no_supply == sum i : AccountIdx, state.accounts[i].no_balance
+  preserved_by all
+
+cover happy_path [mint_yes, mint_no, transfer_yes, burn_yes]

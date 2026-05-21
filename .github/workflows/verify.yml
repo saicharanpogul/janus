@@ -108,6 +108,7 @@ jobs:
       fail-fast: false
       matrix:
         program:
+          - account_layer
           - conditional_tokens
           - lmsr_market
           - market_factory

@@ -18,9 +18,10 @@ sdk/*.tsbuildinfo
 # `qedgen codegen` so we don't commit the multi-MB tree to history.
 formal_verification/*/.lake/
 formal_verification/*/build/
-# lakefile.lean, lean-toolchain, AND lean_solana/ ARE committed.
-# lean_solana is the QEDGen Solana support library (~550K per program,
-# 5 copies = 2.7MB total). CI needs it to satisfy the `qedgenSupport`
-# package dependency in each lakefile. Regenerable via `qedgen init`.
+# lakefile.lean, lean-toolchain, lean_solana/, and lean_solana_mathlib/
+# ARE committed. They're the QEDGen support libraries needed by each
+# project's `require qedgenSupport` / `require qedgenSupportMathlib`
+# in lakefile.lean. Small (~3MB total across all programs);
+# regenerable via `qedgen init`.
 lake-manifest.json
 .qed/
