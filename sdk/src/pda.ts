@@ -3,6 +3,7 @@ import { PublicKey } from "@solana/web3.js";
 import {
   CONDITIONAL_TOKENS_PROGRAM_ID,
   LMSR_MARKET_PROGRAM_ID,
+  LMSR_TRUE_MARKET_PROGRAM_ID,
   MARKET_FACTORY_PROGRAM_ID,
   MARKET_SEED,
   NO_MINT_SEED,
@@ -14,6 +15,7 @@ import {
   REGISTRATION_SEED,
   SLOT_HEIGHT_RESOLVER_PROGRAM_ID,
   SLOT_RESOLVER_SEED,
+  TRUE_POOL_COLLATERAL_VAULT_SEED,
   VAULT_SEED,
   YES_MINT_SEED,
 } from "./constants.js";
@@ -90,6 +92,30 @@ export function derivePoolNoVaultPda(
   return PublicKey.findProgramAddressSync(
     [enc(POOL_NO_VAULT_SEED), pool.toBytes()],
     LMSR_MARKET_PROGRAM_ID,
+  );
+}
+
+// ---- True-LMSR PDAs ----
+//
+// The true-LMSR pool is keyed by the resolver state (so the same
+// collateral + resolver pair gives a deterministic pool address)
+// and the collateral vault is keyed by the pool.
+
+export function deriveTruePoolPda(
+  resolverState: PublicKey,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [enc(POOL_SEED), resolverState.toBytes()],
+    LMSR_TRUE_MARKET_PROGRAM_ID,
+  );
+}
+
+export function deriveTruePoolCollateralVaultPda(
+  pool: PublicKey,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [enc(TRUE_POOL_COLLATERAL_VAULT_SEED), pool.toBytes()],
+    LMSR_TRUE_MARKET_PROGRAM_ID,
   );
 }
 

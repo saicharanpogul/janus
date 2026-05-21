@@ -13,6 +13,10 @@ export const LMSR_MARKET_PROGRAM_ID = new PublicKey(
   "GUwcYfYGqR6WPduoB6gEEZoPG6vdAAK7gK1xP6eTJ3JK",
 );
 
+export const LMSR_TRUE_MARKET_PROGRAM_ID = new PublicKey(
+  "HrFV8Nfncv2gekc9jZPC6rXxnVVaUQi75BmwVFzd5fjQ",
+);
+
 export const SLOT_HEIGHT_RESOLVER_PROGRAM_ID = new PublicKey(
   "3y75gGqFK1KhNF5k1sMy6ydnw6WLcbn1SPRoYbyRkjMj",
 );
@@ -35,6 +39,7 @@ export const VAULT_SEED = "vault";
 export const POOL_SEED = "pool";
 export const POOL_YES_VAULT_SEED = "yes-vault";
 export const POOL_NO_VAULT_SEED = "no-vault";
+export const TRUE_POOL_COLLATERAL_VAULT_SEED = "coll-vault";
 
 export const SLOT_RESOLVER_SEED = "slot-resolver";
 export const PYTH_RESOLVER_SEED = "pyth-resolver";
@@ -56,6 +61,16 @@ export const LMSR_MARKET_IX = {
   Swap: 1,
   WithdrawPoolTokens: 2,
 } as const;
+
+export const LMSR_TRUE_MARKET_IX = {
+  InitializePool: 0,
+  Buy: 1,
+  Sell: 2,
+  WithdrawResidual: 3,
+} as const;
+
+/** Side discriminant used by lmsr-true-market Buy/Sell. */
+export const TRUE_SIDE = { Yes: 0, No: 1 } as const;
 
 export const RESOLVER_IX = {
   /** Standardized across all resolver programs. */

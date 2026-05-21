@@ -73,7 +73,11 @@ export interface PythPriceResolverInitParams {
   authority: PublicKey;
   seedKey: PublicKey;
   priceFeed: PublicKey;
+  /** 32-byte feed identifier matching the on-chain `PriceUpdateV2.feed_id`. */
+  feedId: Uint8Array;
   earliestSlot: bigint;
+  /** Max slot drift tolerated between `posted_slot` and current slot. */
+  maxStalenessSlots: bigint;
   thresholdPrice: bigint;
   thresholdExpo: number;
   comparison: PythComparison;
@@ -87,21 +91,35 @@ export interface PythPriceResolverInitResult {
 export function initializePythPriceResolverIx(
   params: PythPriceResolverInitParams,
 ): PythPriceResolverInitResult {
+  if (params.feedId.length !== 32) {
+    throw new Error("feedId must be 32 bytes");
+  }
   const [state, bump] = derivePythResolverStatePda(params.seedKey);
 
-  // data: tag(1) + [bump:u8, comparison:u8, pad:6, price_feed:32, earliest:u64,
-  //                 threshold_price:i64, threshold_expo:i32, pad:4, seed_key:32] (96 bytes)
-  const data = new Uint8Array(1 + 96);
+  // data: tag(1) + 136 bytes:
+  //   [0]      bump : u8
+  //   [1]      comparison : u8 (0=gte, 1=lt)
+  //   [2..8]   padding
+  //   [8..40]  price_feed : Pubkey
+  //   [40..72] feed_id : [u8;32]
+  //   [72..80] earliest_slot : u64
+  //   [80..88] max_staleness_slots : u64
+  //   [88..96] threshold_price : i64
+  //   [96..100] threshold_expo : i32
+  //   [100..104] padding
+  //   [104..136] seed_key : [u8;32]
+  const data = new Uint8Array(1 + 136);
   data[0] = RESOLVER_IX.Initialize;
   data[1] = bump;
   data[2] = params.comparison === "gte" ? 0 : 1;
-  // bytes [3..9] padding
   data.set(params.priceFeed.toBytes(), 9);
-  const view = new DataView(data.buffer, data.byteOffset + 41, 24);
+  data.set(params.feedId, 41);
+  const view = new DataView(data.buffer, data.byteOffset + 73, 28);
   view.setBigUint64(0, params.earliestSlot, true);
-  view.setBigInt64(8, params.thresholdPrice, true);
-  view.setInt32(16, params.thresholdExpo, true);
-  data.set(params.seedKey.toBytes(), 65);
+  view.setBigUint64(8, params.maxStalenessSlots, true);
+  view.setBigInt64(16, params.thresholdPrice, true);
+  view.setInt32(24, params.thresholdExpo, true);
+  data.set(params.seedKey.toBytes(), 105);
 
   const ix = new TransactionInstruction({
     programId: PYTH_PRICE_RESOLVER_PROGRAM_ID,
