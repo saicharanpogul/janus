@@ -1,0 +1,27 @@
+{
+  "name": "@janus/agent-toolkit",
+  "version": "0.1.0",
+  "description": "Build & run autonomous agents on the Janus binary-markets primitive",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "swarm:demo": "node --import=tsx examples/spawn-swarm.ts"
+  },
+  "dependencies": {
+    "@janus/sdk": "file:../sdk",
+    "@solana/spl-token": "^0.4.0",
+    "@solana/web3.js": "^1.95.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.0"
+  }
+}
