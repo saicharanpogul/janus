@@ -71,9 +71,16 @@ theorem cost_at_zero (b : ℝ) :
 theorem cost_lower_bound
     (b q_yes q_no : ℝ) (hb : b > 0) (hyes : q_yes ≥ 0) (hno : q_no ≥ 0) :
     C b q_yes q_no ≥ max q_yes q_no := by
-  -- log(exp(a) + exp(b)) ≥ max(a, b) since exp(a) + exp(b) ≥ exp(max(a,b))
-  -- and log is monotone. Multiplying by b > 0 preserves the inequality.
-  sorry
+  unfold C
+  cases max_cases q_yes q_no <;>
+    nlinarith [Real.log_exp (q_yes / b), Real.log_exp (q_no / b),
+      Real.log_le_log (by positivity)
+        (show Real.exp (q_yes / b) + Real.exp (q_no / b) ≥ Real.exp (q_yes / b) by
+          linarith [Real.exp_pos (q_yes / b), Real.exp_pos (q_no / b)]),
+      Real.log_le_log (by positivity)
+        (show Real.exp (q_yes / b) + Real.exp (q_no / b) ≥ Real.exp (q_no / b) by
+          linarith [Real.exp_pos (q_yes / b), Real.exp_pos (q_no / b)]),
+      mul_div_cancel₀ q_yes hb.ne', mul_div_cancel₀ q_no hb.ne']
 
 /-- Cost is monotone in `q_yes`: increasing the YES reserve never
     decreases the cost. Formally, for any `δ ≥ 0`:
@@ -81,15 +88,17 @@ theorem cost_lower_bound
 theorem cost_monotone_yes
     (b q_yes q_no δ : ℝ) (hb : b > 0) (hδ : δ ≥ 0) :
     C b (q_yes + δ) q_no ≥ C b q_yes q_no := by
-  -- exp is monotone, so exp((q+δ)/b) ≥ exp(q/b); the sum increases;
-  -- log is monotone; b > 0 preserves the inequality.
-  sorry
+  exact mul_le_mul_of_nonneg_left
+    (Real.log_le_log (by positivity)
+      (by exact add_le_add (Real.exp_le_exp.mpr <| by gcongr; linarith) le_rfl))
+    hb.le
 
 /-- Symmetric monotonicity in `q_no`. -/
 theorem cost_monotone_no
     (b q_yes q_no δ : ℝ) (hb : b > 0) (hδ : δ ≥ 0) :
     C b q_yes (q_no + δ) ≥ C b q_yes q_no := by
-  sorry
+  exact mul_le_mul_of_nonneg_left
+    (Real.log_le_log (by positivity) (by gcongr; linarith)) hb.le
 
 /-- **Bounded loss** (headline theorem).
 

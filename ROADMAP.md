@@ -20,13 +20,16 @@ items are multi-day research projects with clear entry points.
 
 ### Formal verification
 - 107 Kani BMC harnesses verifying transition properties.
-- 99+ Lean theorems (Mathlib-enabled, all build via `lake build`):
+- 105+ Lean theorems (Mathlib-enabled, all build via `lake build`):
   - **conditional-tokens**: 35 theorems incl. collateral conservation
     (`vault + user_balance == initial_collateral`)
   - **lmsr-market**: 21 (swap_no_drain, fee_bps_bounded, status_monotone)
-  - **lmsr-true-market**: 24 (vault_eq_initial_plus_net_flow,
-    status_monotone, subsidy_field_stable, b_field_stable across
-    init/buy/sell/resolve)
+  - **lmsr-true-market**: 24 state-machine theorems
+    (vault_eq_initial_plus_net_flow, status_monotone, subsidy_field_stable,
+    b_field_stable) + 6 real-analysis theorems in `LmsrCost.lean`
+    (cost_at_zero, cost_lower_bound, cost_monotone_yes/no,
+    bounded_loss, subsidizer_loss_bound). Proves the headline
+    bounded-loss invariant: `vault ≥ initial_subsidy − b · log(2)`.
   - **slot-height-resolver**: 6
   - **pyth-price-resolver**: 12
   - **market-factory**: 1
@@ -61,11 +64,15 @@ exactly. Operator playbook + `max_staleness_slots` guidance in
   burn/transfer theorems closed via `sum_update_proj_bilinear` + `lia`
   / `grind`. 12/12 proven.
 * **lmsr-true-market bounded-loss** (2026-05-21, project
-  `0c1e9d43-cfd1-4f9f-94c8-ee303eafbf6e`, IN_PROGRESS): real-valued
-  LMSR cost formalization in `LmsrCost.lean` with 3 sorry'd lemmas
-  (cost_lower_bound, cost_monotone_yes, cost_monotone_no). The
-  headline `bounded_loss` theorem closes once these monotonicities
-  land.
+  `0c1e9d43-cfd1-4f9f-94c8-ee303eafbf6e`): real-valued LMSR cost
+  formalization in `LmsrCost.lean` — 3 lemmas closed by Aristotle:
+  `cost_lower_bound` (via `max_cases` + `nlinarith` over
+  `Real.log_exp` + `Real.log_le_log`), `cost_monotone_yes` /
+  `cost_monotone_no` (via `mul_le_mul_of_nonneg_left` +
+  `Real.log_le_log` + `Real.exp_le_exp.mpr` + `gcongr`). Combined
+  with the hand-written `bounded_loss` and `subsidizer_loss_bound`,
+  this gives a fully-proven, axiom-free `vault ≥ initial_subsidy -
+  b · log(2)` floor.
 
 ## Research projects (multi-day)
 
