@@ -75,8 +75,16 @@ jobs:
         with:
           shared-key: qedgen
 
-      - name: Install qedgen
-        run: cargo install qedgen-solana-skills --locked
+      - name: Install qedgen from source
+        # qedgen isn't published on crates.io — install from the QEDGen
+        # solana-skills monorepo at the version that matches what we
+        # validated specs against locally.
+        run: |
+          cargo install \
+            --git https://github.com/QEDGen/solana-skills.git \
+            --tag v2.15.1 \
+            --bin qedgen \
+            --locked
 
       - name: Validate every .qedspec
         run: |
@@ -101,11 +109,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install elan (Lean version manager)
-        run: |
-          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
-            | sh -s -- -y --default-toolchain none
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Install elan + Lean toolchain
+        # Use the community Lean action — it reads `lean-toolchain` from
+        # the working dir and installs the right version automatically.
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: formal_verification/${{ matrix.program }}
+          build: false
+          test: false
+          use-mathlib-cache: false
 
       - name: Cache Mathlib build artefacts
         uses: actions/cache@v4
