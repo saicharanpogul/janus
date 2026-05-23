@@ -26,24 +26,36 @@ export class RandomStrategy implements Strategy {
     if (active.length === 0) return { kind: "noop", reason: "no active markets" };
     const m = active[Math.floor(Math.random() * active.length)];
 
-    // For CPMM: split, swap, or noop.
+    // For CPMM: trade if we have a position; split first if we don't.
     if (m.poolType === "cpmm") {
-      const choice = Math.random();
-      if (choice < 0.3 && ctx.collateral >= 100_000n) {
-        return { kind: "split", market: m.market, amount: 100_000n };
-      }
       const myPos = ctx.positions.find((p) => p.market.equals(m.market));
-      if (myPos && myPos.yesBalance > 0n) {
-        const amt = myPos.yesBalance / 4n + 1n;
-        return {
-          kind: "swap",
-          market: m.market,
-          direction: "yesToNo",
-          amountIn: amt,
-          minAmountOut: 0n,
-        };
+      const hasPosition = myPos && (myPos.yesBalance > 0n || myPos.noBalance > 0n);
+
+      if (!hasPosition) {
+        // Always split to get a position when we don't have one and can afford it.
+        if (ctx.collateral >= 200_000n) {
+          return { kind: "split", market: m.market, amount: 200_000n };
+        }
+        return { kind: "noop", reason: "no position and broke" };
       }
-      return { kind: "noop", reason: "no position to trade" };
+
+      // Randomly swap or split-more.
+      if (Math.random() < 0.2 && ctx.collateral >= 200_000n) {
+        return { kind: "split", market: m.market, amount: 200_000n };
+      }
+      // Pick the bigger side to swap from.
+      const fromYes =
+        myPos!.yesBalance > myPos!.noBalance ? true : myPos!.noBalance === 0n;
+      const sourceBal = fromYes ? myPos!.yesBalance : myPos!.noBalance;
+      if (sourceBal < 100n) return { kind: "noop", reason: "dust position" };
+      const amt = sourceBal / 4n + 1n;
+      return {
+        kind: "swap",
+        market: m.market,
+        direction: fromYes ? "yesToNo" : "noToYes",
+        amountIn: amt,
+        minAmountOut: 0n,
+      };
     }
 
     // For true-LMSR: buy or sell.

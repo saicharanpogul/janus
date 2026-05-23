@@ -12,7 +12,9 @@ export class MomentumStrategy implements Strategy {
 
   constructor(opts: { alpha?: number; threshold?: number } = {}) {
     this.alpha = opts.alpha ?? 0.2;
-    this.threshold = opts.threshold ?? 0.05;
+    // 0.005 lets it act on small (~0.5%) deltas, which lets the swarm
+    // explore. Bump back up for noisier markets.
+    this.threshold = opts.threshold ?? 0.005;
   }
 
   decide(ctx: AgentContext): Action {

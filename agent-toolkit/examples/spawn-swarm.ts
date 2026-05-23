@@ -59,8 +59,9 @@ console.log("Funding agents with SOL…");
 await fundAgentsWithSol({
   connection: conn,
   swarm,
-  amountSol: 0.5,
-  minSol: 0.05,
+  authority,
+  amountSol: 0.1, // 0.1 SOL covers ~1000 simple txs at devnet fees
+  minSol: 0.02,
 });
 
 console.log("Seeding collateral…");

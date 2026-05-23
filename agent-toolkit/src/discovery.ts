@@ -133,6 +133,7 @@ export async function snapshotAllMarkets(
     if (!mInfo || !pInfo || mInfo.data.length < 248) return;
 
     const status = mInfo.data[1];
+    const collateralMint = new PublicKey(mInfo.data.subarray(8, 40));
     const poolOwner = pInfo.owner.toBase58();
 
     let poolType: PoolType;
@@ -182,6 +183,7 @@ export async function snapshotAllMarkets(
       questionHash: reg.questionHash,
       deadlineSlot: reg.deadlineSlot,
       createdAtSlot: reg.createdAtSlot,
+      collateralMint,
       yesPrice,
       liquidity,
       feeBps,

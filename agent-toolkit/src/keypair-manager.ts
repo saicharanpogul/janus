@@ -97,43 +97,70 @@ export function loadOrCreateSwarm(opts: {
 }
 
 /**
- * Airdrop SOL to every agent in the swarm. Devnet rate-limits aggressively,
- * so we throttle and retry. Skips agents that already have at least
- * `minSol` SOL.
+ * Fund agents with SOL. Tries `requestAirdrop` first (works on local
+ * validators and lightly-loaded devnets); falls back to a transfer
+ * from `authority` when the faucet 429s — the public devnet faucet is
+ * rate-limited heavily and unreliable for >1 wallet per minute.
+ *
+ * Throws if neither path can fund an agent below `minSol`.
  */
 export async function fundAgentsWithSol(opts: {
   connection: Connection;
   swarm: SwarmSession;
+  /** Authority keypair used as a fallback funding source (recommended on devnet). */
+  authority?: Keypair;
   amountSol: number;
   minSol: number;
-  throttleMs?: number;
+  /** How many faucet attempts before falling back to authority transfer. */
+  faucetAttempts?: number;
 }): Promise<void> {
-  const throttleMs = opts.throttleMs ?? 1500;
+  const faucetAttempts = opts.faucetAttempts ?? 1;
   for (const agent of opts.swarm.agents) {
     const balance = await opts.connection.getBalance(agent.keypair.publicKey);
     if (balance >= opts.minSol * LAMPORTS_PER_SOL) {
+      console.log(
+        `[fund] ${agent.agentId} already has ${(balance / LAMPORTS_PER_SOL).toFixed(3)} SOL — skipping`,
+      );
       continue;
     }
-    let attempt = 0;
-    while (attempt < 5) {
+
+    let funded = false;
+
+    // Path 1: try the faucet briefly.
+    for (let attempt = 0; attempt < faucetAttempts; attempt++) {
       try {
         const sig = await opts.connection.requestAirdrop(
           agent.keypair.publicKey,
           opts.amountSol * LAMPORTS_PER_SOL,
         );
         await opts.connection.confirmTransaction(sig, "confirmed");
-        console.log(`[fund] ${agent.agentId} +${opts.amountSol} SOL`);
+        console.log(`[fund] ${agent.agentId} +${opts.amountSol} SOL via faucet`);
+        funded = true;
         break;
-      } catch (e) {
-        attempt++;
-        const wait = throttleMs * 2 ** attempt;
-        console.log(
-          `[fund] ${agent.agentId} airdrop failed (attempt ${attempt}); retry in ${wait}ms`,
-        );
-        await new Promise((r) => setTimeout(r, wait));
+      } catch {
+        // fall through
       }
     }
-    await new Promise((r) => setTimeout(r, throttleMs));
+
+    if (funded) continue;
+
+    // Path 2: transfer from authority.
+    if (!opts.authority) {
+      throw new Error(
+        `[fund] ${agent.agentId} faucet failed and no authority provided. Pass authority: Keypair to fundAgentsWithSol so it can transfer SOL.`,
+      );
+    }
+    const tx = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: opts.authority.publicKey,
+        toPubkey: agent.keypair.publicKey,
+        lamports: Math.floor(opts.amountSol * LAMPORTS_PER_SOL),
+      }),
+    );
+    await sendAndConfirmTransaction(opts.connection, tx, [opts.authority]);
+    console.log(
+      `[fund] ${agent.agentId} +${opts.amountSol} SOL via authority transfer`,
+    );
   }
 }
 

@@ -12,7 +12,9 @@ export class MeanReverterStrategy implements Strategy {
 
   constructor(opts: { target?: number; threshold?: number } = {}) {
     this.target = opts.target ?? 0.5;
-    this.threshold = opts.threshold ?? 0.15;
+    // Lowered from 0.15 → 0.03 so fresh markets at exactly 0.5 still
+    // get small probes; the strategy was over-conservative before.
+    this.threshold = opts.threshold ?? 0.03;
   }
 
   decide(ctx: AgentContext): Action {

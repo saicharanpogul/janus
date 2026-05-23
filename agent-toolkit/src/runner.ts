@@ -82,7 +82,12 @@ export class SwarmRunner {
 
   private async runTick(): Promise<void> {
     const slot = BigInt(await this.opts.connection.getSlot("confirmed"));
-    const markets = await snapshotAllMarkets(this.opts.connection);
+    const allMarkets = await snapshotAllMarkets(this.opts.connection);
+    // Restrict to markets that use the swarm's shared collateral mint —
+    // otherwise the swarm tries to act on foreign markets it can't pay
+    // into, producing "invalid account data" errors at simulation.
+    const swarmMint = this.opts.swarm.collateralMint.publicKey;
+    const markets = allMarkets.filter((m) => m.collateralMint.equals(swarmMint));
 
     const summary = {
       tick: this.tick,

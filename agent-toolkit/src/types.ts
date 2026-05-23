@@ -13,6 +13,9 @@ export interface MarketSnapshot {
   questionHash: Uint8Array;
   deadlineSlot: bigint;
   createdAtSlot: bigint;
+  /** SPL mint accepted as collateral by this market. Used by the runner
+   *  to filter to markets the swarm can actually trade on. */
+  collateralMint: PublicKey;
 
   // Pricing
   /** Implied YES probability ∈ [0, 1] from the curve. */
