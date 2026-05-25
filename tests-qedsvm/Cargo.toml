@@ -1,0 +1,36 @@
+[workspace]
+# Standalone workspace — pins agave 4.x crates that conflict with the
+# main janus workspace (which is on 3.x).
+
+[package]
+name = "janus-tests-qedsvm"
+description = "Differential testing: every Janus program runs through both Mollusk and qedsvm; we assert byte+CU equality on every fixture."
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# qedsvm + mollusk both target agave 4.x; we keep this crate isolated
+# from the rest of our workspace (which targets 3.x) to avoid version
+# resolution conflicts.
+qedsvm = { path = "../../qedsvm/qedsvm-rs", features = ["diff-mollusk"] }
+mollusk-svm = { version = "0.12.1-agave-4.0", features = ["all-builtins"] }
+mollusk-svm-programs-token = "0.12.1-agave-4.0"
+solana-pubkey = "4.2.0"
+solana-instruction = { version = "3.4.0", features = ["std"] }
+# qedsvm uses solana-account 4.x; mollusk-svm 0.12.1-agave-4.0 uses 3.x
+# internally. We pull both in (under aliases) so the same fixture can
+# be passed to either engine in its native type — same trick qedsvm-rs
+# uses for its dev-deps.
+solana-account = "4.3.0"
+mollusk-account = { package = "solana-account", version = "3.4.0" }
+solana-program-pack = "3.1"
+spl-token-interface = "2.0"
+solana-program-option = "3.1"
+solana-sdk-ids = "3.1.0"
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(target_os, values("solana"))'] }
