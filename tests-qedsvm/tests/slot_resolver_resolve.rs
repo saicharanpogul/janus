@@ -76,6 +76,7 @@ fn diff_resolve_before_deadline() {
         instruction: resolve_ix,
         mollusk_accounts,
         qedsvm_accounts,
+        extra_programs: vec![],
     };
 
     let m = run_mollusk(&fixture);

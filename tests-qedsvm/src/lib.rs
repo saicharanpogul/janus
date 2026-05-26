@@ -35,10 +35,35 @@ pub struct DiffFixture<'a> {
     pub instruction: Instruction,
     pub mollusk_accounts: Vec<(Pubkey, MolluskAccount)>,
     pub qedsvm_accounts: Vec<(Pubkey, AccountSharedData)>,
+    /// Additional CPI'd programs (e.g. SPL Token). Empty for programs
+    /// that only CPI into native programs (System / ComputeBudget /
+    /// loaders) — those are built into both engines.
+    pub extra_programs: Vec<ExtraProgram<'a>>,
+}
+
+#[derive(Clone)]
+pub struct ExtraProgram<'a> {
+    pub id: Pubkey,
+    pub elf: &'a [u8],
+    /// Loader version mollusk uses. v2 = SPL Token.
+    pub loader: MolluskLoader,
+}
+
+#[derive(Clone, Copy)]
+pub enum MolluskLoader {
+    V2,
+    V3,
 }
 
 pub fn run_mollusk(f: &DiffFixture) -> EngineRun {
     let mut mollusk = Mollusk::new(&f.program_id, f.program_so_path);
+    for extra in &f.extra_programs {
+        let loader = match extra.loader {
+            MolluskLoader::V2 => mollusk_svm::program::loader_keys::LOADER_V2,
+            MolluskLoader::V3 => mollusk_svm::program::loader_keys::LOADER_V3,
+        };
+        mollusk.add_program_with_loader_and_elf(&extra.id, &loader, extra.elf);
+    }
     let r = mollusk.process_instruction(&f.instruction, &f.mollusk_accounts);
     EngineRun {
         cu: r.compute_units_consumed,
@@ -55,6 +80,9 @@ pub fn run_mollusk(f: &DiffFixture) -> EngineRun {
 pub fn run_qedsvm(f: &DiffFixture) -> EngineRun {
     let mut svm = Svm::default().with_cu_budget(1_400_000);
     svm.add_program(&f.program_id, f.program_so_bytes);
+    for extra in &f.extra_programs {
+        svm.add_program(&extra.id, extra.elf);
+    }
     let r = svm
         .process_instruction(&f.instruction, &f.qedsvm_accounts)
         .expect("qedsvm runs");
@@ -79,18 +107,34 @@ fn format_status<T: std::fmt::Debug>(r: T) -> String {
     }
 }
 
-/// Coarse status-shape: `"Success"` or `"Failure"`. Used as a fallback
-/// comparison when the two engines agree the program failed but
-/// encode the error differently — see `QEDGen/qedsvm#9` for the
-/// pending fix that will make this unnecessary.
-fn status_shape(s: &str) -> &'static str {
+/// Extract the inner variant from either engine's status string so
+/// `Failure(InvalidAccountData)` and `ProgramError(InvalidAccountData)`
+/// compare equal.
+///
+/// qedsvm#9 fixed the packed-u64 → named-variant encoding, but the
+/// two engines still wrap the variant in different outer enums:
+///   - mollusk: `Failure(<InstructionError variant>)`
+///   - qedsvm:  `ProgramError(<ProgramError variant>)`
+///
+/// We strip the outer wrapper and compare the inner token. `Success`
+/// stays `Success`.
+fn canonical_status(s: &str) -> String {
     if s == "Success" {
-        "Success"
-    } else if s.starts_with("Failure") {
-        "Failure"
-    } else {
-        "Unknown"
+        return s.to_string();
     }
+    // Strip known outer wrappers, returning the first token inside.
+    for prefix in &["Failure(", "ProgramError(", "Failure { exit_code: "] {
+        if let Some(rest) = s.strip_prefix(prefix) {
+            // `Failure(InvalidAccountData)` → "InvalidAccountData"
+            // `Failure { exit_code: 17179869184 }` → "17179869184"
+            let inner = rest
+                .trim_end_matches(')')
+                .trim_end_matches(" }")
+                .trim();
+            return format!("Failure({inner})");
+        }
+    }
+    s.to_string()
 }
 
 /// Convert a (pubkey, mollusk_account) list into the
@@ -121,25 +165,13 @@ pub fn assert_runs_equal(
     qedsvm: &EngineRun,
 ) -> Result<(), String> {
     let mut failures: Vec<String> = Vec::new();
-    if mollusk.status != qedsvm.status {
-        // Tolerate `Failure(<named variant>)` vs `Failure { exit_code:
-        // <u64> }` mismatch when both engines fail — pending qedsvm#9.
-        // Real divergence (one succeeds, one fails) still trips.
-        let shape_match = status_shape(&mollusk.status) == status_shape(&qedsvm.status);
-        let both_failed = shape_match && status_shape(&mollusk.status) == "Failure";
-        if !both_failed {
-            failures.push(format!(
-                "status differ:\n    mollusk = {}\n    qedsvm  = {}",
-                mollusk.status, qedsvm.status
-            ));
-        } else {
-            // Print a warning so users notice the encoding gap on
-            // qedsvm's side, but don't fail the assertion.
-            eprintln!(
-                "[{label}] status-encoding mismatch (pending qedsvm#9):\n    mollusk = {}\n    qedsvm  = {}",
-                mollusk.status, qedsvm.status
-            );
-        }
+    let mc = canonical_status(&mollusk.status);
+    let qc = canonical_status(&qedsvm.status);
+    if mc != qc {
+        failures.push(format!(
+            "status differ:\n    mollusk = {} (canonical: {mc})\n    qedsvm  = {} (canonical: {qc})",
+            mollusk.status, qedsvm.status,
+        ));
     }
     if mollusk.cu != qedsvm.cu {
         failures.push(format!(

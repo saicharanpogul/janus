@@ -78,12 +78,7 @@ fn system_program_account() -> Account {
     }
 }
 
-/// Blocked on `QEDGen/qedsvm#10` — System Program `CreateAccount` CPI
-/// diverges between qedsvm and mollusk. Re-enable (drop `#[ignore]`)
-/// once that lands. Run explicitly with
-/// `cargo test --test slot_height_resolver -- --ignored`.
 #[test]
-#[ignore = "qedsvm#10: System Program CreateAccount CPI divergence"]
 fn diff_initialize() {
     let payer = Pubkey::new_unique();
     let authority = Pubkey::new_unique();
@@ -114,6 +109,7 @@ fn diff_initialize() {
         instruction: ix,
         mollusk_accounts,
         qedsvm_accounts,
+        extra_programs: vec![],
     };
 
     let m = run_mollusk(&fixture);
