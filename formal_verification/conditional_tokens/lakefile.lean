@@ -11,4 +11,4 @@ require mathlib from git
 
 @[default_target]
 lean_lib Janus_conditional_tokensSpec where
-  roots := #[`Spec, `Proofs]
+  roots := #[`Spec, `Proofs, `SVM.Market]
