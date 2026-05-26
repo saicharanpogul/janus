@@ -74,6 +74,44 @@ exactly. Operator playbook + `max_staleness_slots` guidance in
   this gives a fully-proven, axiom-free `vault ≥ initial_subsidy -
   b · log(2)` floor.
 
+### qedsvm differential conformance — **shipped (2026-05-26)**
+
+Wired Janus into [QEDGen/qedsvm](https://github.com/QEDGen/qedsvm), a
+Lean-4 SVM that operates on the compiled `.so`. Every Janus program now
+runs through both `mollusk_svm::Mollusk` (agave-backed) and `qedsvm::Svm`
+(Lean reference) with byte+CU equality asserted. Lives in `tests-qedsvm/`.
+
+**6/6 differential fixtures pass**:
+
+| Test | CU | What it covers |
+|---|---|---|
+| `slot_resolver_resolve` | 478 | Read-only Pinocchio dispatch |
+| `slot_height_resolver::diff_initialize` | 3265 | System Program CreateAccount CPI |
+| `pyth_resolver_resolve` | 290 | Failure-path encoding parity |
+| `conditional_tokens_split` | 4840 | SPL Token Mint chain (Transfer + 2× MintTo) |
+| `lmsr_market_swap` | 3874 | PDA-signed Token::Transfer |
+| `conditional_tokens_redeem` | 3362 | Burn + PDA-signed Transfer |
+
+Upstream contributions during integration: 1 issue closed via PR #6
+(the `BufferParse(InvalidDupIndex(0))` Pinocchio dup-marker fix —
+they cited our byte-level report as "30-min confirm-and-fix"), 1 PR
+merged (`mollusk_to_qedsvm` + reciprocal converter in their
+`diff` module, PR #8/#14), 2 follow-up issues filed and closed by
+their team (#9 packed-ProgramError decode, #10 CpiAccount layout).
+
+### Level 2 (bytecode Hoare triple) — **paused**
+
+Started step 1: `formal_verification/conditional_tokens/SVM/Market.lean`
+ships the 248-byte struct model + `marketState` SL predicate skeleton.
+Disasm snapshot at `tests-qedsvm/disasm/`. Proposal doc at
+`tests-qedsvm/LEVEL_2_STEP2_PROPOSAL.md`.
+
+Paused because: completing it is 2–4 months of focused Lean work,
+the marginal credibility over Level 1's byte+CU equality is small
+without a concrete audit / integrator trigger, and product /
+distribution moves are higher-leverage right now. Artifacts preserved
+for restart if/when verification depth becomes load-bearing.
+
 ## Research projects (multi-day)
 
 ### True LMSR — **shipped (2026-05-21)**
